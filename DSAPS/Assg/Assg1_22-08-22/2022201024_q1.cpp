@@ -3,6 +3,7 @@
 #define fast ios::sync_with_stdio(0);cin.tie(0);cout.tie(0);
 using namespace std;
 
+//OK
 string bigIntAdd(string a, string b){
     string res="";
     int i=a.size()-1, j=b.size()-1;
@@ -80,8 +81,8 @@ string bigIntAdd(string a, string b){
 
     return res;
 }
-
-string bigIntSbtract(string a, string b){
+//OK
+string bigIntSubtract(string a, string b){
     string res="";
     int i=a.size()-1, j=b.size()-1;
     int borrow=0;
@@ -123,7 +124,7 @@ string bigIntSbtract(string a, string b){
 
     return res.substr(ansStart, resLength-ansStart);
 }
-
+//OK
 string bigIntMultiply(string a, string b){
     string product="0";
     int n=a.size(), m=b.size();
@@ -166,8 +167,7 @@ string bigIntMultiply(string a, string b){
     }
     return product;
 }
-//3000 digits max
-//Addition(+), subtraction(-), multiplication(x, lowercase “X”).
+//1.OK
 string addSubMul(string eq){
     int n = eq.size();
     string numbers[(n/2)+1];
@@ -223,7 +223,7 @@ string addSubMul(string eq){
     string finalResults[3];
     for(int i=0; i<mulResLength; i++){
         if(multipliedResults[i]=="+" || multipliedResults[i]=="-"){
-            string opRes = (multipliedResults[i]=="+" ? bigIntAdd(multipliedResults[i-1], multipliedResults[i+1]) : bigIntSbtract(multipliedResults[i-1], multipliedResults[i+1]));
+            string opRes = (multipliedResults[i]=="+" ? bigIntAdd(multipliedResults[i-1], multipliedResults[i+1]) : bigIntSubtract(multipliedResults[i-1], multipliedResults[i+1]));
             finalResults[j-1] = opRes;
             i++;
             multipliedResults[i]=opRes;
@@ -233,20 +233,20 @@ string addSubMul(string eq){
     }
     return finalResults[0];
 }
-
+//2.
 string exp(string x, string n){
     string res;
     return res;
 }
-
+//3.
 string gcd(string a, string b){
     string res;
     return res;
 }
-
+//4.OK
 string fact(string n){
-    string res;
-    return res;
+    if(n=="0" || n=="1") return n;
+    return bigIntMultiply(n, fact(bigIntSubtract(n, "1")));
 }
 
 signed main(){
