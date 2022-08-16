@@ -4,6 +4,42 @@
 using namespace std;
 
 //OK
+bool bigIntGreaterThan(string a, string b){
+    if(a.size()>b.size()) return true;
+    else if(a.size()<b.size()) return false;
+    else{
+        int n=a.size();
+        for(int i=0; i<n; i++){
+            if(a[i]>b[i]) return true;
+            else if(a[i]<b[i]) return false;
+        }
+    }
+    return false;
+}
+//OK
+bool bigIntLesserThan(string a, string b){
+    if(a.size()<b.size()) return true;
+    else if(a.size()>b.size()) return false;
+    else{
+        int n=a.size();
+        for(int i=0; i<n; i++){
+            if(a[i]<b[i]) return true;
+            else if(a[i]>b[i]) return false;
+        }
+    }
+    return false;
+}
+//OK
+bool bigIntEqualTo(string a, string b){
+    if(a.size()!=b.size()) return false;
+    int n=a.size();
+    for(int i=0; i<n; i++){
+        if(a[i]!=b[i]) return false;
+    }
+    return true;
+}
+
+//OK
 string bigIntAdd(string a, string b){
     string res="";
     int i=a.size()-1, j=b.size()-1;
@@ -167,6 +203,71 @@ string bigIntMultiply(string a, string b){
     }
     return product;
 }
+//OK
+string bigIntDivide(string a, string b){
+    if(bigIntLesserThan(a, b) || a=="0") return "0";
+    else if(bigIntEqualTo(a, b)) return "1";
+    else if(b=="1") return a;
+    else if(b=="0"){
+        throw "cannot be divided by 0";
+    }
+
+    string res="0";
+    string curr="0";
+    int n=a.size();
+    for(int i=0; i<n; i++){
+        curr=bigIntMultiply(curr, "10");
+        string currDig="";
+        currDig+=a[i];
+        curr=bigIntAdd(curr, currDig);
+        if(bigIntGreaterThan(curr, b) || bigIntEqualTo(curr, b)){
+            for(int j=9; j>=1; j--){
+                char v = '0'+j;
+                string J = "";
+                J=J+v;
+                string val = bigIntMultiply(b, J);
+                if(bigIntLesserThan(val, curr) || bigIntEqualTo(val, curr)){
+                    res=bigIntAdd(bigIntMultiply(res,"10"), J);
+                    curr = bigIntSubtract(curr, val);
+                    break;
+                }
+            }
+        }else res=bigIntMultiply(res,"10");
+    }
+    return res;
+
+}
+//OK
+string bigIntModulo(string a, string b){
+    if(bigIntLesserThan(a, b)) return a;
+    else if(bigIntEqualTo(a, b) || b=="1") return "0";
+    else if(b=="0"){
+        throw "cannot be divided by 0";
+    }
+
+    string curr="0";
+    int n=a.size();
+    for(int i=0; i<n; i++){
+        curr=bigIntMultiply(curr, "10");
+        string currDig="";
+        currDig+=a[i];
+        curr=bigIntAdd(curr, currDig);
+        if(bigIntGreaterThan(curr, b) || bigIntEqualTo(curr, b)){
+            for(int j=9; j>=1; j--){
+                char v = '0'+j;
+                string J = "";
+                J=J+v;
+                string val = bigIntMultiply(b, J);
+                if(bigIntLesserThan(val, curr) || bigIntEqualTo(val, curr)){
+                    curr = bigIntSubtract(curr, val);
+                    break;
+                }
+            }
+        };
+    }
+    return curr;
+}
+
 //1.OK
 string addSubMul(string eq){
     int n = eq.size();
@@ -236,6 +337,9 @@ string addSubMul(string eq){
 //2.
 string exp(string x, string n){
     string res;
+
+
+
     return res;
 }
 //3.
@@ -246,7 +350,14 @@ string gcd(string a, string b){
 //4.OK
 string fact(string n){
     if(n=="0" || n=="1") return n;
-    return bigIntMultiply(n, fact(bigIntSubtract(n, "1")));
+    string k="1";
+    string ans="1";
+    while(k!=n){
+        ans=bigIntMultiply(k, ans);
+        k=bigIntAdd(k, "1");
+    }
+    ans=bigIntMultiply(ans, n);
+    return ans;
 }
 
 signed main(){
@@ -274,6 +385,9 @@ signed main(){
     }else{
         cout<<"This Operation doesnt exist"<<"\n";
     }
+
+    // cout<<bigIntModulo("", "")<<"\n";
+    // cout<<bigIntMultiply("0", "10")<<"\n";
 
     return 0;
 }
