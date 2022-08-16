@@ -263,7 +263,7 @@ string bigIntModulo(string a, string b){
                     break;
                 }
             }
-        };
+        }
     }
     return curr;
 }
@@ -334,18 +334,25 @@ string addSubMul(string eq){
     }
     return finalResults[0];
 }
-//2.
-string exp(string x, string n){
-    string res;
+//2.Check Again
+string exp(string x, int n){
+    if(n==0) return "1";
+    else if(n==1) return x;
 
-
-
+    string res="1";
+    while(n>0){
+        if(n%2==1){
+            res = bigIntMultiply(res, x);
+        }
+        x=bigIntMultiply(x, x);
+        n/=2;
+    }
     return res;
 }
-//3.
+//3.Check again (Almost ok..)
 string gcd(string a, string b){
-    string res;
-    return res;
+    if(bigIntModulo(a,b)=="0") return b;
+    return gcd(b, bigIntModulo(a,b));
 }
 //4.OK
 string fact(string n){
@@ -371,7 +378,8 @@ signed main(){
         cin>>str;
         cout<<addSubMul(str);
     }else if(operation==2){
-        string x, n;
+        string x;
+        int n;
         cin>>x>>n;
         cout<<exp(x, n);
     }else if(operation==3){
