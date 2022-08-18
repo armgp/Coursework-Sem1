@@ -271,7 +271,7 @@ string bigIntModulo(string a, string b){
 //1.OK
 string addSubMul(string eq){
     int n = eq.size();
-    string numbers[(n/2)+1];
+    string numbers[n];
 
     //creating an array of numbers and symbols
     int start=0;
@@ -301,40 +301,36 @@ string addSubMul(string eq){
     //using numbers array for calculation
     int numbersLength = idx;
 
-    //first all multiplication ops are done
-    int j=0;
-    string multipliedResults[numbersLength];
     for(int i=0; i<numbersLength; i++){
         if(numbers[i]=="x"){
             string mulRes = bigIntMultiply(numbers[i-1], numbers[i+1]);
-            multipliedResults[j-1] = mulRes;
+            numbers[i-1] = "0";
+            numbers[i]="+";
+            numbers[i+1]=mulRes;
             i++;
-        }else{
-            multipliedResults[j++]=numbers[i];
         }
     }
-    int mulResLength = j;
 
-    for(int i=0; i<mulResLength; i++){
-        cout<<multipliedResults[i]<<"\n";
+    for(int i=0; i<numbersLength; i++){
+        cout<<numbers[i]<<"\n";
     }
     cout<<"---------------------"<<"\n"<<"\n";
 
-    j=0;
+    int j=0;
     string finalResults[3];
-    for(int i=0; i<mulResLength; i++){
-        if(multipliedResults[i]=="+" || multipliedResults[i]=="-"){
-            string opRes = (multipliedResults[i]=="+" ? bigIntAdd(multipliedResults[i-1], multipliedResults[i+1]) : bigIntSubtract(multipliedResults[i-1], multipliedResults[i+1]));
+    for(int i=0; i<numbersLength; i++){
+        if(numbers[i]=="+" || numbers[i]=="-"){
+            string opRes = (numbers[i]=="+" ? bigIntAdd(numbers[i-1], numbers[i+1]) : bigIntSubtract(numbers[i-1], numbers[i+1]));
             finalResults[j-1] = opRes;
             i++;
-            multipliedResults[i]=opRes;
+            numbers[i]=opRes;
         }else{
-            finalResults[j++]=multipliedResults[i];
+            finalResults[j++]=numbers[i];
         }
     }
     return finalResults[0];
 }
-//2.Check Again
+//2.Check Again(Almost ok..)
 string exp(string x, int n){
     if(n==0) return "1";
     else if(n==1) return x;
@@ -349,7 +345,7 @@ string exp(string x, int n){
     }
     return res;
 }
-//3.Check again (Almost ok..)
+//3.Check again 
 string gcd(string a, string b){
     if(bigIntModulo(a,b)=="0") return b;
     return gcd(b, bigIntModulo(a,b));
@@ -364,6 +360,7 @@ string fact(string n){
         k=bigIntAdd(k, "1");
     }
     ans=bigIntMultiply(ans, n);
+    
     return ans;
 }
 
@@ -393,9 +390,6 @@ signed main(){
     }else{
         cout<<"This Operation doesnt exist"<<"\n";
     }
-
-    // cout<<bigIntModulo("", "")<<"\n";
-    // cout<<bigIntMultiply("0", "10")<<"\n";
 
     return 0;
 }
