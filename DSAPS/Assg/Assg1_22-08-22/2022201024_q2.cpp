@@ -70,6 +70,9 @@ template <typename T> void Deque<T>::resize(){
 //13. Check Again
 template <typename T> void Deque<T>::resize(int x, T d){
     T* newArr = new T[x];
+    if(x<qSize){
+        backPtr=backPtr+(qSize-x);
+    }
     int i=backPtr;
     int count=0;
     for(int k=0; k<x; k++){
@@ -145,10 +148,12 @@ template <typename T> void Deque<T>::pop_front(){
 }
 //7. OK.
 template <typename T> T Deque<T>::front(){
+    if(qSize==0) return T();
     return arr[frontPtr];
 }
 //8. OK.
 template <typename T> T Deque<T>::back(){
+    if(qSize==0) return T();
     return arr[backPtr];
 }
 //9. OK.
@@ -178,9 +183,8 @@ signed main(){
     fast;
      Deque<int> q;
      deque<int> Q;
-    // Iterate range [1, 100],
-    // push even numbers at the back
-    // and push odd numbers at the front
+     cout<<q.front()<<"\n";
+    
     for (int i = 1; i < 17; i++){
         if (i % 2 == 0){
             q.push_back(i);
@@ -228,7 +232,7 @@ signed main(){
         cout<<q[i]<<" ";
     }
     cout<<"\n";
-    q.resize(20, 99);
+    q.resize(7, 99);
     for(int i=0; i<q.size(); i++){
         cout<<q[i]<<" ";
     }
@@ -277,6 +281,21 @@ signed main(){
     for(int i=0; i<Q.size(); i++){
         cout<<Q[i]<<" ";
     }
+
+     cout<<"\n";
+    Q.resize(7, 99);
+    for(int i=0; i<Q.size(); i++){
+        cout<<Q[i]<<" ";
+    }
+    cout<<"\n";
+    cout<<Q.back()<<"\n";
+    Q.clear();
+    Q.push_back(1012);
+    for(int i=0; i<Q.size(); i++){
+        cout<<Q[i]<<" ";
+    }
+    cout<<"\n"<<"---"<<"\n";
+
     return 0;
 }
 
