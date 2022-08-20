@@ -3,8 +3,22 @@
 #define fast ios::sync_with_stdio(0);cin.tie(0);cout.tie(0);
 using namespace std;
 
+string cleanStringBigInt(string a){
+    int aLength=a.size();
+    int st=aLength-1;
+    for(int ind=0; ind<aLength; ind++){
+        if(a[ind]!='0'){
+            st=ind;
+            break;
+        }
+    }
+
+    return a.substr(st, aLength-st);
+}
 //OK
 bool bigIntGreaterThan(string a, string b){
+    // a=cleanStringBigInt(a);
+    b=cleanStringBigInt(b);
     if(a.size()>b.size()) return true;
     else if(a.size()<b.size()) return false;
     else{
@@ -18,6 +32,8 @@ bool bigIntGreaterThan(string a, string b){
 }
 //OK
 bool bigIntLesserThan(string a, string b){
+    // a=cleanStringBigInt(a);
+    b=cleanStringBigInt(b);
     if(a.size()<b.size()) return true;
     else if(a.size()>b.size()) return false;
     else{
@@ -31,6 +47,8 @@ bool bigIntLesserThan(string a, string b){
 }
 //OK
 bool bigIntEqualTo(string a, string b){
+    // a=cleanStringBigInt(a);
+    // b=cleanStringBigInt(b);
     if(a.size()!=b.size()) return false;
     int n=a.size();
     for(int i=0; i<n; i++){
@@ -38,9 +56,10 @@ bool bigIntEqualTo(string a, string b){
     }
     return true;
 }
-
 //OK
 string bigIntAdd(string a, string b){
+    // a=cleanStringBigInt(a);
+    // b=cleanStringBigInt(b);
     string res="";
     int i=a.size()-1, j=b.size()-1;
     int carry=0;
@@ -119,6 +138,9 @@ string bigIntAdd(string a, string b){
 }
 //OK
 string bigIntSubtract(string a, string b){
+    // a=cleanStringBigInt(a);
+    // b=cleanStringBigInt(b);
+    if(b=="0") return a;
     string res="";
     int i=a.size()-1, j=b.size()-1;
     int borrow=0;
@@ -149,19 +171,12 @@ string bigIntSubtract(string a, string b){
         i--;
     }
 
-    int resLength=res.size();
-    int ansStart=0;
-    for(int ind=0; ind<resLength; ind++){
-        if(res[ind]!='0'){
-            ansStart=ind;
-            break;
-        }
-    }
-
-    return res.substr(ansStart, resLength-ansStart);
+    return cleanStringBigInt(res);
 }
 //OK
 string bigIntMultiply(string a, string b){
+    a=cleanStringBigInt(a);
+    b=cleanStringBigInt(b);
     string product="0";
     int n=a.size(), m=b.size();
     
@@ -205,6 +220,8 @@ string bigIntMultiply(string a, string b){
 }
 //OK
 string bigIntDivide(string a, string b){
+    // a=cleanStringBigInt(a);
+    // b=cleanStringBigInt(b);
     if(bigIntLesserThan(a, b) || a=="0") return "0";
     else if(bigIntEqualTo(a, b)) return "1";
     else if(b=="1") return a;
@@ -239,36 +256,30 @@ string bigIntDivide(string a, string b){
 }
 //OK
 string bigIntModulo(string a, string b){
+
     if(bigIntLesserThan(a, b)) return a;
     else if(bigIntEqualTo(a, b) || b=="1") return "0";
     else if(b=="0"){
         throw "cannot be divided by 0";
     }
 
-    string curr="0";
-    int n=a.size();
-    for(int i=0; i<n; i++){
-        curr=bigIntMultiply(curr, "10");
-        string currDig="";
-        currDig+=a[i];
-        curr=bigIntAdd(curr, currDig);
-        if(bigIntGreaterThan(curr, b) || bigIntEqualTo(curr, b)){
-            for(int j=9; j>=1; j--){
-                char v = '0'+j;
-                string J = "";
-                J=J+v;
-                string val = bigIntMultiply(b, J);
-                if(bigIntLesserThan(val, curr) || bigIntEqualTo(val, curr)){
-                    curr = bigIntSubtract(curr, val);
-                    break;
-                }
-            }
+    int bSize=b.size();
+    while(bigIntGreaterThan(a, b)){
+        string val = a.substr(0, bSize);
+        int end=bSize-1;
+        if(bigIntLesserThan(val, b)){
+            val = a.substr(0, bSize+1);
+            end=bSize;
+        } 
+        while(bigIntLesserThan(b, val)){
+            val = bigIntSubtract(val, b);
         }
+        a=val+a.substr(end+1);
     }
-    return curr;
+
+    return a;
 }
 
-//1.OK
 string addSubMul(string eq){
     int n = eq.size();
     string numbers[n];
@@ -300,38 +311,45 @@ string addSubMul(string eq){
 
     //using numbers array for calculation
     int numbersLength = idx;
-
     for(int i=0; i<numbersLength; i++){
         if(numbers[i]=="x"){
             string mulRes = bigIntMultiply(numbers[i-1], numbers[i+1]);
-            numbers[i-1] = "0";
-            numbers[i]="+";
+            numbers[i-1] = "#";
+            numbers[i]="#";
             numbers[i+1]=mulRes;
             i++;
         }
     }
 
+    int k=0;
+    string resNumbers[numbersLength];
     for(int i=0; i<numbersLength; i++){
-        cout<<numbers[i]<<"\n";
+        if(numbers[i]!="#") resNumbers[k++]=numbers[i];
     }
-    cout<<"---------------------"<<"\n"<<"\n";
+
+    // for(int i=0; i<k; i++){
+    //     cout<<resNumbers[i]<<"\n";
+    // }
+    // cout<<"---------------------"<<"\n"<<"\n";
 
     int j=0;
     string finalResults[3];
-    for(int i=0; i<numbersLength; i++){
-        if(numbers[i]=="+" || numbers[i]=="-"){
-            string opRes = (numbers[i]=="+" ? bigIntAdd(numbers[i-1], numbers[i+1]) : bigIntSubtract(numbers[i-1], numbers[i+1]));
+    for(int i=0; i<k; i++){
+        if(resNumbers[i]=="+" || resNumbers[i]=="-"){
+            string opRes = (resNumbers[i]=="+" ? bigIntAdd(resNumbers[i-1], resNumbers[i+1]) : bigIntSubtract(resNumbers[i-1], resNumbers[i+1]));
             finalResults[j-1] = opRes;
             i++;
-            numbers[i]=opRes;
+            resNumbers[i]=opRes;
         }else{
-            finalResults[j++]=numbers[i];
+            finalResults[j++]=resNumbers[i];
         }
     }
     return finalResults[0];
+
 }
 //2.Check Again(Almost ok..)
 string exp(string x, int n){
+    // x=cleanStringBigInt(x);
     if(n==0) return "1";
     else if(n==1) return x;
 
@@ -346,12 +364,25 @@ string exp(string x, int n){
     return res;
 }
 //3.Check again 
-string gcd(string a, string b){
-    if(bigIntModulo(a,b)=="0") return b;
-    return gcd(b, bigIntModulo(a,b));
+string bigGcd(string a, string b){
+    // a=cleanStringBigInt(a);
+    // b=cleanStringBigInt(b);
+
+    string r="0";
+    while(!bigIntEqualTo(b, "0")){
+        r=bigIntModulo(a, b);
+        a=b;
+        b=r;
+        // cout<<b<<"\n";
+    }
+    return a;
+    
+    // if(bigIntEqualTo(b, "0")) return a;
+    // else return bigGcd(b, bigIntModulo(a, b));
 }
 //4.OK
 string fact(string n){
+    // n=cleanStringBigInt(n);
     if(n=="0" || n=="1") return n;
     string k="1";
     string ans="1";
@@ -366,7 +397,6 @@ string fact(string n){
 
 signed main(){
     fast;
-    
     int operation;
     cin>>operation;
     
@@ -382,7 +412,7 @@ signed main(){
     }else if(operation==3){
         string a, b;
         cin>>a>>b;
-        cout<<gcd(a, b);
+        cout<<bigGcd(a, b);
     }else if(operation==4){
         string str;
         cin>>str;
