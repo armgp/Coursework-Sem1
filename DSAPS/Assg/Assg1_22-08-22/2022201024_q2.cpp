@@ -67,12 +67,13 @@ template <typename T> void Deque<T>::resize(){
     }
 }
 
-//13. Check Again
 template <typename T> void Deque<T>::resize(int x, T d){
     T* newArr = new T[x];
     if(x<qSize){
         backPtr=backPtr+(qSize-x);
     }
+    if(backPtr>capacity) backPtr=qSize-x-1;
+
     int i=backPtr;
     int count=0;
     for(int k=0; k<x; k++){
@@ -86,13 +87,13 @@ template <typename T> void Deque<T>::resize(int x, T d){
     }
 
     capacity=x;
+    if(x<=qSize)qSize=x;
     arr=newArr;
     frontPtr=qSize-1;
-    qSize=capacity;
+    if(x>=qSize)qSize=x;
     backPtr=frontPtr+1<x?frontPtr+1:0;
-    cout<<"\n";
 }
-//12. OK
+
 template <typename T> void Deque<T>::clear(){
     T* newArr = new T[10];
     arr=newArr;
@@ -101,7 +102,7 @@ template <typename T> void Deque<T>::clear(){
     capacity=10;
     qSize=0;
 }
-//3. OK(check).
+
 template <typename T> void Deque<T>::push_back(T x){
     if(qSize==capacity) resize();
     if(backPtr==0) backPtr=capacity-1;
@@ -112,7 +113,7 @@ template <typename T> void Deque<T>::push_back(T x){
     arr[backPtr]=x;
     qSize++;
 }
-//4. OK(check).
+
 template <typename T> void Deque<T>::push_front(T x){
     if(qSize==capacity) resize();
     if(frontPtr==-1 && backPtr==-1){
@@ -122,7 +123,7 @@ template <typename T> void Deque<T>::push_front(T x){
     arr[frontPtr]=x;
     qSize++;
 }
-//5. OK(check).
+
 template <typename T> void Deque<T>::pop_back(){
     if(qSize==0) throw "deque empty";
     if(frontPtr==backPtr){
@@ -134,7 +135,7 @@ template <typename T> void Deque<T>::pop_back(){
         qSize--;
     }
 }
-//6. OK(check).
+
 template <typename T> void Deque<T>::pop_front(){
     if(qSize==0) throw "deque empty";
     if(frontPtr==backPtr){
@@ -146,25 +147,25 @@ template <typename T> void Deque<T>::pop_front(){
         qSize--;
     }
 }
-//7. OK.
+
 template <typename T> T Deque<T>::front(){
     if(qSize==0) return T();
     return arr[frontPtr];
 }
-//8. OK.
+
 template <typename T> T Deque<T>::back(){
     if(qSize==0) return T();
     return arr[backPtr];
 }
-//9. OK.
+
 template <typename T> bool Deque<T>::empty(){
     return qSize==0;
 }
-//10. OK.
+
 template <typename T> int Deque<T>::size(){
     return qSize;
 }
-//11. [] OK.
+
 template <typename T> T& Deque<T>::operator[](int index){
         int i;
         if(index>=qSize) {
@@ -196,108 +197,96 @@ signed main(){
         }
     }
  
- 
-    // Print the current size
-    cout << "Current size " << q.size() << endl;
- 
-    // Print front elements of deque
-    cout << "Front element " << q.front() << endl;
- 
-    // Print last element of the deque
-    cout << "Rear element " << q.back() << endl;
- 
-    cout << endl;
- 
-    cout << "Pop an element from front" << endl;
- 
-    // Pop an element from the front of deque
-    q.pop_front();
- 
-    cout << "Pop an element from back" << endl;
- 
-    // Pop an element from the back of deque
-    q.pop_back();
- 
-    cout << endl;
- 
-    // Print current size
-    cout << "Current size " << q.size() << endl;
- 
-    // Print front elements of deque
-    cout << "Front element " << q.front() << endl;
- 
-    // Print last element of the deque
-    cout << "Rear element " << q.back() << endl;
     for(int i=0; i<q.size(); i++){
         cout<<q[i]<<" ";
     }
     cout<<"\n";
+    for(int i=0; i<Q.size(); i++){
+        cout<<Q[i]<<" ";
+    }
+    cout<<"\n \n";
+
+    
     q.resize(7, 99);
+    Q.resize(7, 99);
+
     for(int i=0; i<q.size(); i++){
         cout<<q[i]<<" ";
     }
+    cout<<"\n";
+    for(int i=0; i<Q.size(); i++){
+        cout<<Q[i]<<" ";
+    }
+
+
     cout<<"\n";
     cout<<q.back()<<"\n";
+    cout<<Q.back()<<"\n \n";
+
     q.clear();
+    Q.clear();
+
     q.push_back(1012);
+    Q.push_back(1012);
+
     for(int i=0; i<q.size(); i++){
         cout<<q[i]<<" ";
     }
-    cout<<"\n"<<"---"<<"\n";
-    cout<<"-------------------------------------------------------------------------"<<"\n";
-
- 
-    // Print the current size
-    cout << "Current size " << Q.size() << endl;
- 
-    // Print front elements of deque
-    cout << "Front element " << Q.front() << endl;
- 
-    // Print last element of the deque
-    cout << "Rear element " << Q.back() << endl;
- 
-    cout << endl;
- 
-    cout << "Pop an element from front" << endl;
- 
-    // Pop an element from the front of deque
-    Q.pop_front();
- 
-    cout << "Pop an element from back" << endl;
- 
-    // Pop an element from the back of deque
-    Q.pop_back();
- 
-    cout << endl;
- 
-    // Print current size
-    cout << "Current size " << Q.size() << endl;
- 
-    // Print front elements of deque
-    cout << "Front element " << Q.front() << endl;
- 
-    // Print last element of the deque
-    cout << "Rear element " << Q.back() << endl;
+    cout<<"\n";
     for(int i=0; i<Q.size(); i++){
         cout<<Q[i]<<" ";
     }
+    cout<<"\n \n";
 
-     cout<<"\n";
-    Q.resize(7, 99);
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
+    q.resize(12, 33);
+    Q.resize(12, 33);
+
+    for(int i=0; i<q.size(); i++){
+        cout<<q[i]<<" ";
     }
     cout<<"\n";
-    cout<<Q.back()<<"\n";
-    Q.clear();
-    Q.push_back(1012);
     for(int i=0; i<Q.size(); i++){
         cout<<Q[i]<<" ";
     }
-    cout<<"\n"<<"---"<<"\n";
+    cout<<"\n \n";
 
+    cout<<q.front()<<" "<<Q.front()<<"\n";
+    cout<<q.back()<<" "<<Q.back()<<"\n \n";
+
+    q.push_back(19);
+    Q.push_back(19);
+
+    q.push_front(0);
+    Q.push_front(0);
+
+    cout<<q.front()<<" "<<q.back()<<"\n";
+    cout<<Q.front()<<" "<<Q.back()<<"\n \n";
+
+    for(int i=0; i<q.size(); i++){
+        cout<<q[i]<<" ";
+    }
+    cout<<"\n";
+    for(int i=0; i<Q.size(); i++){
+        cout<<Q[i]<<" ";
+    }
+
+    q.resize(3, 0);
+    Q.resize(3, 0);
+
+    cout<<"\n \n";
+    for(int i=0; i<q.size(); i++){
+        cout<<q[i]<<" ";
+    }
+    cout<<"\n";
+    for(int i=0; i<Q.size(); i++){
+        cout<<Q[i]<<" ";
+    }
+    cout<<"\n \n";
+
+    cout<<"-------------------------------------------------------------------------"<<"\n";
     return 0;
 }
+
 
 
 
