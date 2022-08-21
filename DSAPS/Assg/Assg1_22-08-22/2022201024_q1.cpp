@@ -1,6 +1,5 @@
 #include <iostream>
 #define int int64_t
-#define fast ios::sync_with_stdio(0);cin.tie(0);cout.tie(0);
 using namespace std;
 
 string cleanStringBigInt(string a){
@@ -15,7 +14,7 @@ string cleanStringBigInt(string a){
 
     return a.substr(st, aLength-st);
 }
-//OK
+
 bool bigIntGreaterThan(string a, string b){
     // a=cleanStringBigInt(a);
     b=cleanStringBigInt(b);
@@ -30,7 +29,7 @@ bool bigIntGreaterThan(string a, string b){
     }
     return false;
 }
-//OK
+
 bool bigIntLesserThan(string a, string b){
     // a=cleanStringBigInt(a);
     b=cleanStringBigInt(b);
@@ -45,7 +44,7 @@ bool bigIntLesserThan(string a, string b){
     }
     return false;
 }
-//OK
+
 bool bigIntEqualTo(string a, string b){
     // a=cleanStringBigInt(a);
     // b=cleanStringBigInt(b);
@@ -56,7 +55,7 @@ bool bigIntEqualTo(string a, string b){
     }
     return true;
 }
-//OK
+
 string bigIntAdd(string a, string b){
     // a=cleanStringBigInt(a);
     // b=cleanStringBigInt(b);
@@ -136,7 +135,7 @@ string bigIntAdd(string a, string b){
 
     return res;
 }
-//OK
+
 string bigIntSubtract(string a, string b){
     // a=cleanStringBigInt(a);
     // b=cleanStringBigInt(b);
@@ -173,7 +172,7 @@ string bigIntSubtract(string a, string b){
 
     return cleanStringBigInt(res);
 }
-//OK
+
 string bigIntMultiply(string a, string b){
     a=cleanStringBigInt(a);
     b=cleanStringBigInt(b);
@@ -218,43 +217,7 @@ string bigIntMultiply(string a, string b){
     }
     return product;
 }
-//OK
-string bigIntDivide(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
-    if(bigIntLesserThan(a, b) || a=="0") return "0";
-    else if(bigIntEqualTo(a, b)) return "1";
-    else if(b=="1") return a;
-    else if(b=="0"){
-        throw "cannot be divided by 0";
-    }
 
-    string res="0";
-    string curr="0";
-    int n=a.size();
-    for(int i=0; i<n; i++){
-        curr=bigIntMultiply(curr, "10");
-        string currDig="";
-        currDig+=a[i];
-        curr=bigIntAdd(curr, currDig);
-        if(bigIntGreaterThan(curr, b) || bigIntEqualTo(curr, b)){
-            for(int j=9; j>=1; j--){
-                char v = '0'+j;
-                string J = "";
-                J=J+v;
-                string val = bigIntMultiply(b, J);
-                if(bigIntLesserThan(val, curr) || bigIntEqualTo(val, curr)){
-                    res=bigIntAdd(bigIntMultiply(res,"10"), J);
-                    curr = bigIntSubtract(curr, val);
-                    break;
-                }
-            }
-        }else res=bigIntMultiply(res,"10");
-    }
-    return res;
-
-}
-//OK
 string bigIntModulo(string a, string b){
 
     if(bigIntLesserThan(a, b)) return a;
@@ -347,7 +310,7 @@ string addSubMul(string eq){
     return finalResults[0];
 
 }
-//2.Check Again(Almost ok..)
+
 string exp(string x, int n){
     // x=cleanStringBigInt(x);
     if(n==0) return "1";
@@ -363,7 +326,7 @@ string exp(string x, int n){
     }
     return res;
 }
-//3.Check again 
+
 string bigGcd(string a, string b){
     // a=cleanStringBigInt(a);
     // b=cleanStringBigInt(b);
@@ -373,17 +336,16 @@ string bigGcd(string a, string b){
         r=bigIntModulo(a, b);
         a=b;
         b=r;
-        // cout<<b<<"\n";
     }
     return a;
     
     // if(bigIntEqualTo(b, "0")) return a;
     // else return bigGcd(b, bigIntModulo(a, b));
 }
-//4.OK
+
 string fact(string n){
     // n=cleanStringBigInt(n);
-    if(n=="0" || n=="1") return n;
+    if(n=="0" || n=="1") return "1";
     string k="1";
     string ans="1";
     while(k!=n){
@@ -396,7 +358,6 @@ string fact(string n){
 }
 
 signed main(){
-    fast;
     int operation;
     cin>>operation;
     
@@ -417,9 +378,11 @@ signed main(){
         string str;
         cin>>str;
         cout<<fact(str);
-    }else{
+    }
+    else{
         cout<<"This Operation doesnt exist"<<"\n";
     }
+    
 
     return 0;
 }
