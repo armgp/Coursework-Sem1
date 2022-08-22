@@ -283,6 +283,27 @@ signed main(){
     }
     cout<<"\n \n";
 
+    q.resize(17, -1);
+    Q.resize(17, -1);
+    q.push_back(33);
+    Q.push_back(33);
+    q.push_front(44);
+    Q.push_front(44);
+
+    cout<<q.back()<<" "<<Q.back()<<"\n";
+    cout<<q.front()<<" "<<Q.front()<<"\n";
+
+    for(int i=0; i<q.size(); i++){
+        cout<<q[i]<<" ";
+    }
+    cout<<"\n";
+    for(int i=0; i<Q.size(); i++){
+        cout<<Q[i]<<" ";
+    }
+    cout<<"\n \n";
+
+
+
     cout<<"-------------------------------------------------------------------------"<<"\n";
     return 0;
 }

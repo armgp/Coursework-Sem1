@@ -17,7 +17,7 @@ string cleanStringBigInt(string a){
 
 bool bigIntGreaterThan(string a, string b){
     // a=cleanStringBigInt(a);
-    b=cleanStringBigInt(b);
+    // b=cleanStringBigInt(b);
     if(a.size()>b.size()) return true;
     else if(a.size()<b.size()) return false;
     else{
@@ -32,7 +32,7 @@ bool bigIntGreaterThan(string a, string b){
 
 bool bigIntLesserThan(string a, string b){
     // a=cleanStringBigInt(a);
-    b=cleanStringBigInt(b);
+    // b=cleanStringBigInt(b);
     if(a.size()<b.size()) return true;
     else if(a.size()>b.size()) return false;
     else{
@@ -57,8 +57,8 @@ bool bigIntEqualTo(string a, string b){
 }
 
 string bigIntAdd(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
+    a=cleanStringBigInt(a);
+    b=cleanStringBigInt(b);
     string res="";
     int i=a.size()-1, j=b.size()-1;
     int carry=0;
@@ -174,8 +174,8 @@ string bigIntSubtract(string a, string b){
 }
 
 string bigIntMultiply(string a, string b){
-    a=cleanStringBigInt(a);
-    b=cleanStringBigInt(b);
+    // a=cleanStringBigInt(a);
+    // b=cleanStringBigInt(b);
     string product="0";
     int n=a.size(), m=b.size();
     
@@ -219,6 +219,8 @@ string bigIntMultiply(string a, string b){
 }
 
 string bigIntModulo(string a, string b){
+    // a=cleanStringBigInt(a);
+    // b=cleanStringBigInt(b);
 
     if(bigIntLesserThan(a, b)) return a;
     else if(bigIntEqualTo(a, b) || b=="1") return "0";
@@ -234,12 +236,13 @@ string bigIntModulo(string a, string b){
             val = a.substr(0, bSize+1);
             end=bSize;
         } 
-        while(bigIntLesserThan(b, val)){
+        while(!bigIntGreaterThan(b, val)){
             val = bigIntSubtract(val, b);
         }
         a=val+a.substr(end+1);
+        a=cleanStringBigInt(a);
     }
-
+    a=cleanStringBigInt(a);
     return a;
 }
 
@@ -328,9 +331,7 @@ string exp(string x, int n){
 }
 
 string bigGcd(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
-
+    if(a=="0" && b=="0") cout<<"GCD(0, 0) is undefined";
     string r="0";
     while(!bigIntEqualTo(b, "0")){
         r=bigIntModulo(a, b);
@@ -338,9 +339,6 @@ string bigGcd(string a, string b){
         b=r;
     }
     return a;
-    
-    // if(bigIntEqualTo(b, "0")) return a;
-    // else return bigGcd(b, bigIntModulo(a, b));
 }
 
 string fact(string n){
@@ -369,10 +367,13 @@ signed main(){
         string x;
         int n;
         cin>>x>>n;
+        x=cleanStringBigInt(x);
         cout<<exp(x, n);
     }else if(operation==3){
         string a, b;
         cin>>a>>b;
+        a=cleanStringBigInt(a);
+        b=cleanStringBigInt(b);
         cout<<bigGcd(a, b);
     }else if(operation==4){
         string str;
@@ -383,6 +384,5 @@ signed main(){
         cout<<"This Operation doesnt exist"<<"\n";
     }
     
-
     return 0;
 }
