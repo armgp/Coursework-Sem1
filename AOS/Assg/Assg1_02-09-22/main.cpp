@@ -11,12 +11,16 @@
 #include <ctype.h>
 #include <errno.h>
 #include <sys/ioctl.h>
+#include <bits/stdc++.h>
 
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
+#define LOWTOUP(k) ((k) & 0xdf)
+#define EXPLORER_VERSION "0.0.1"
 
 /** data **/
 struct explorerConfig{
+    int cx, cy;
     int explorerRows;
     int explorerColumns;
     struct termios origTermios;
@@ -120,45 +124,105 @@ int getWindowSize(int& rows, int& cols){
     return 0;
 }
 
+/** append buffer **/
+std::string appendBuffer="";
+
 /** input **/
 void processKeyPress(){
     char c = readKey();
 
-    //IF CTRL+q exit
-    //here since the 5th bit is also discarded 
-    //it doesnt matter if its lowercase/uppercase q.
-    //5th bit set to 1 is lowercase
     if (iscntrl(c)) {
       printf("%d\r\n", c);
     } else {
       printf("%d ('%c')\r\n", c, c);
     }
 
-    if(c==CTRL_KEY('q')) exit(0);
+    //IF CTRL+q exit
+    //here since the 5th bit is also discarded 
+    //it doesnt matter if its lowercase/uppercase q.
+    //5th bit set to 1 is lowercase
+    c=LOWTOUP(c);
+    if(c=='Q'){
+        //to clear screen when exiting
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        exit(0);
+    } 
 }
 
 /** output **/
 void drawExplorerRows(){
-    for(int i=0; i<exCfg.explorerRows; i++) write(STDOUT_FILENO, "~\n\r", 3);
+    int n = exCfg.explorerRows;
+    for(int i=0; i<n; i++){
+        //\x1b[K is for clearing each line
+        //2 erases the whole line, 1 erases the part of the line to the left of the cursor, 
+        //and 0 erases the part of the line to the right of the cursor. 
+        //0 is the default argument, and that’s what we want, 
+        //so we leave out the argument and just use <esc>[K.
+        if(i==n-1) appendBuffer+="|\x1b[K";
+        else if(i==2){
+            std::string title = "GP File Explorer --- version ";
+            title+=EXPLORER_VERSION;
+            int titleLength=title.size();
+            int padding = (exCfg.explorerColumns-titleLength)/2;
+            for(int i=0; i<padding; i++){
+                title+="-";
+                title="-"+title;
+            }
+            if(titleLength<=exCfg.explorerColumns) appendBuffer+=title;
+            else appendBuffer+=title.substr(0, exCfg.explorerColumns);
+            appendBuffer+="\x1b[K\r\n";
+        }
+        else appendBuffer+="|\x1b[K\n\r";
+    }
 }
 
 void refreshExplorerScreen(){
+    //hide cursor while drawing
+    appendBuffer+="\x1b[?25l";
+
+    /* DELETED-(We dont want to clear the entire screen each time we refresh)
     // \x1b is the escape charachter(byte)=27 which is always in front of escape sequences
     // escape seq always starts with esc char and [
     // after [ comes the argument which is 2(clear the entire screen) and command which is J(Erase In Display)
     //4bytes
-    write(STDOUT_FILENO, "\x1b[2J", 4);
+    appendBuffer+="\x1b[2J";
+    */
+
     //reposition cursor. The default is \x1b[1;1H == \x1b[H, so only need to write 3 bytes
     //row and colum starts from 1 and not 0.
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    appendBuffer+="\x1b[H";
+    // write(STDOUT_FILENO, "\x1b[H", 3);
 
     drawExplorerRows();
 
-    write(STDOUT_FILENO, "\x1b[H", 3);
+    appendBuffer+="\x1b[H";
+    // write(STDOUT_FILENO, "\x1b[H", 3);
+
+    //+1 because indexing starts from 1 in the screen
+    std::string cy=std::to_string(exCfg.cy+1);
+    std::string cx=std::to_string(exCfg.cx+1);
+
+    // appendBuffer+=cx
+
+    // add "\x1b[cy;cxH" to appendBuffer
+    std::string positionCursor ="\x1b[";
+    positionCursor+=cy;
+    positionCursor+=";";
+    positionCursor+=cx;
+    positionCursor+="H";
+    appendBuffer+=positionCursor;
+
+    //show cursor after drawing
+    appendBuffer+="\x1b[?25h";
+    
+    write(STDOUT_FILENO, appendBuffer.c_str(), appendBuffer.size());
+    appendBuffer="";
 }
 
 /** init **/
 void initExplorer(){
+    exCfg.cx=0;
+    exCfg.cy=0;
     if(getWindowSize(exCfg.explorerRows, exCfg.explorerColumns)==-1) die("getWindowSize");
 }
 
