@@ -24,7 +24,6 @@ then
 	YYYY="0$YYYY"
 fi
 
-echo $YYYY
 
 #getting day and month for possible palindrome
 DD=$(echo $YYYY | cut -c 3-4 | rev )

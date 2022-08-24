@@ -1,11 +1,11 @@
 #!/bin/bash
 #Assignment 1
-echo "Enter a number greater than 0:"
+echo -n  "Enter a number greater than 0:"
 read n
 
 while [ $n -lt 0 ]
 do
-	echo "Please Enter a number greater than 0"
+	echo -n "Please Enter a number greater than 0"
 	read n
 done
 
@@ -48,20 +48,27 @@ print_twin_primes(){
 			j=$(($j+1))
 			product=$(($i*$(($i+2))))
 			currProduct=$product
-			sum=0
-			while [ $currProduct -gt 0 ]
+			sum=0; digRoot=1000
+
+			while [ $digRoot -gt 10 ]
 			do
-				sum=$(($sum+$(($currProduct%10))))
-				currProduct=$(($currProduct/10))
-			done	
+				while [ $currProduct -gt 0 ]
+				do
+					sum=$(($sum+$(($currProduct%10))))
+					currProduct=$(($currProduct/10))
+				done	
+				digRoot=$sum
+				currProduct=$sum
+				sum=0
+			done
 
 			echo -e "\e[1;36m                |$j."
 			echo "                |Prime1: $i, Prime2: $(($i+2))"
 			echo "                |Prime1*Prime2 = $product"
-			echo "                |Digital Sum = $sum"
+			echo "                |Digital Root = $digRoot"
 			echo -e "\e[1;37m                |----------------------------------"
 
-			totSum=$(($totSum+$sum))
+			totSum=$(($totSum+$digRoot))
 		fi
 	done
 

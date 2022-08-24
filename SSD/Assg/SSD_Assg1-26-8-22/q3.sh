@@ -32,6 +32,12 @@ do
 	asc_num=$(echo $number | grep -o . | sort | tr -d "\n")
 	desc_num=$(echo $number | grep -o . | sort -r | tr -d "\n")
 	number=$(expr $desc_num - $asc_num)
+
+	if [[ ${#number} != 4 ]]
+	then
+		number="0$number"
+	fi
+
 done
 echo -en "\e[1;32m $number"
 echo
