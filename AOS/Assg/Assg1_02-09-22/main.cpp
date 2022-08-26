@@ -4,6 +4,7 @@
 // 3. Use of ncurses.h is strictly prohibited. 
 
 /** includes **/
+#include <bits/stdc++.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <termios.h>
@@ -12,11 +13,11 @@
 #include <errno.h>
 #include <sys/ioctl.h>
 #include <bits/stdc++.h>
+#include <dirent.h>
 
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define LOWTOUP(k) ((k) & 0xdf)
-#define EXPLORER_VERSION "0.0.1"
 
 /** data **/
 struct explorerConfig{
@@ -26,6 +27,8 @@ struct explorerConfig{
     struct termios origTermios;
 }exCfg;
 
+std::vector<std::vector<std::string>> directories;
+std::string currDirectory="current dir";
 
 /** terminal **/
 void die(const char* s){
@@ -33,6 +36,7 @@ void die(const char* s){
     //we can also see the error after clearing of the screen
     write(STDOUT_FILENO, "\x1b[2J", 4);
     write(STDOUT_FILENO, "\x1b[H", 3);
+    write(STDOUT_FILENO, "\x1b[48;2;0;0;0ml", 13);
 
     perror(s);
     exit(1);
@@ -50,7 +54,7 @@ void enableRawMode(){
 
     //--flip off ECHO bit to disable printing the key we type on terminal
     //--flip off canonical mode(ICANON) when this bit is made 0, input is taken
-    //byte by byte instead of line by line(now as soon as q is pressed the program exits)
+    //byte by byte instead of line by line.
     //--(IXTEN flip off) On some systems, when you type Ctrl-V, the terminal waits for you 
     //to type another character and then sends that character literally. 
     //--turning off ISIG will turn off sending SIGINT(Ctrl+C - terminate) and SIGTSTP(Ctrl+Z - suspend)
@@ -87,6 +91,18 @@ char readKey(){
     return c;
 }
 
+void repositionCursor(int x, int y){
+    if(x>=exCfg.explorerColumns){
+        x=exCfg.explorerColumns;
+    }
+    if(y>=exCfg.explorerRows){
+        y=exCfg.explorerRows;
+    }
+    std::string X = std::to_string(x+1);
+    std::string Y = std::to_string(y+1);
+    appendBuffer+="\x1b["+X+";"+Y+"H";
+}
+
 //fallback method if ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) doesnt work in some systems
 //to get the width and height of the explorer
 int getCursorPosition(int& rows, int& cols){
@@ -103,7 +119,6 @@ int getCursorPosition(int& rows, int& cols){
             break;
         } 
     }
-    printf("\r\n&buffer[1]: '%s'\r\n", &buffer[1]);
 
     if(buffer[0] != '\x1b' || buffer[1] != '[') return -1;
     if (sscanf(&buffer[1], "[%d;%d", &rows, &cols) != 2) return -1;
@@ -143,6 +158,8 @@ void processKeyPress(){
     //5th bit set to 1 is lowercase
     c=LOWTOUP(c);
     if(c=='Q'){
+        //to change the colors back to default 
+        write(STDOUT_FILENO, "\x1b[0m", 4);
         //to clear screen when exiting
         write(STDOUT_FILENO, "\x1b[2J", 4);
         exit(0);
@@ -152,33 +169,54 @@ void processKeyPress(){
 /** output **/
 void drawExplorerRows(){
     int n = exCfg.explorerRows;
+    int m = directories.size();
+    std::string draw;
     for(int i=0; i<n; i++){
-        //\x1b[K is for clearing each line
-        //2 erases the whole line, 1 erases the part of the line to the left of the cursor, 
-        //and 0 erases the part of the line to the right of the cursor. 
-        //0 is the default argument, and that’s what we want, 
-        //so we leave out the argument and just use <esc>[K.
-        if(i==n-1) appendBuffer+="|\x1b[K";
-        else if(i==2){
-            std::string title = "GP File Explorer --- version ";
-            title+=EXPLORER_VERSION;
-            int titleLength=title.size();
-            int padding = (exCfg.explorerColumns-titleLength)/2;
-            for(int i=0; i<padding; i++){
-                title+="-";
-                title="-"+title;
-            }
-            if(titleLength<=exCfg.explorerColumns) appendBuffer+=title;
-            else appendBuffer+=title.substr(0, exCfg.explorerColumns);
-            appendBuffer+="\x1b[K\r\n";
+        if(i==n-1){
+            draw+="\x1b[K\x1b[H";
+            break;
         }
-        else appendBuffer+="|\x1b[K\n\r";
+        if(i==n-2) {
+            draw+="\x1b[K Normal Mode: ";
+            draw+=currDirectory;
+        }else draw+="\x1b[K";
+
+        if(i<m){
+            std::vector<std::string> dirDetails = directories[i];
+            for(std::string col : dirDetails){
+                draw+=col;
+                repositionCursor()
+            }
+        }
+
+        draw+="\r\n";
     }
+    appendBuffer+=draw;
+    //for reference
+    // for(int i=0; i<n; i++){
+    //     //\x1b[K is for clearing each line
+    //     //2 erases the whole line, 1 erases the part of the line to the left of the cursor, 
+    //     //and 0 erases the part of the line to the right of the cursor. 
+    //     //0 is the default argument, and that’s what we want, 
+    //     //so we leave out the argument and just use <esc>[K.
+    //     if(i==n-1) appendBuffer+="\x1b[K\x1b[H";
+    //     else if(i==n-2){
+    //         std::string title = "Normal Mode: ";
+    //         title+=currDirectory;
+    //         int titleLength=title.size();
+    //
+    //         if(titleLength<=exCfg.explorerColumns) appendBuffer+=title;
+    //         else appendBuffer+=title.substr(0, exCfg.explorerColumns);
+    //         appendBuffer+="\x1b[K\r\n";
+    //     }
+    //     else appendBuffer+="\x1b[K\n\r";
+    // }
+
 }
 
 void refreshExplorerScreen(){
     //hide cursor while drawing
-    appendBuffer+="\x1b[?25l";
+    appendBuffer+="\x1b[?25l\x1b[48;2;0;0;60ml";
 
     /* DELETED-(We dont want to clear the entire screen each time we refresh)
     // \x1b is the escape charachter(byte)=27 which is always in front of escape sequences
@@ -189,14 +227,11 @@ void refreshExplorerScreen(){
     */
 
     //reposition cursor. The default is \x1b[1;1H == \x1b[H, so only need to write 3 bytes
-    //row and colum starts from 1 and not 0.
+    //row and column starts from 1 and not 0.
     appendBuffer+="\x1b[H";
     // write(STDOUT_FILENO, "\x1b[H", 3);
 
     drawExplorerRows();
-
-    appendBuffer+="\x1b[H";
-    // write(STDOUT_FILENO, "\x1b[H", 3);
 
     //+1 because indexing starts from 1 in the screen
     std::string cy=std::to_string(exCfg.cy+1);
@@ -227,6 +262,24 @@ void initExplorer(){
 }
 
 int main(){
+
+    DIR* dir = opendir(".");
+    if(dir==NULL) return 1;
+    struct dirent* entity;
+    entity = readdir(dir);
+    
+    while (entity!=NULL){
+        std::vector<std::string> dirDetails;
+        dirDetails.push_back(std::to_string(entity->d_type));
+        dirDetails.push_back(entity->d_name);
+        dirDetails.push_back(std::to_string(entity->d_reclen));
+        // dirDetails.push_back(std::to_string(entity->d_off));
+        // dirDetails.push_back(std::to_string(entity->d_ino));
+        
+        directories.push_back(dirDetails);
+        entity = readdir(dir);
+    }
+    std::sort(directories.begin(), directories.end());
 
     enableRawMode();
     initExplorer();
