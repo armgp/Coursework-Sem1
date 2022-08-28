@@ -36,14 +36,7 @@ struct currDirectoryDetails{
     std::vector<int> minLengthsPerColumn;
 }currDirDet;
 
-struct onScreenDirectories{
-    std::vector<std::vector<std::string>> directories;
-    int currPos=0;
-    int startInd=0;
-    std::string d=".";
-}osd;
-
-
+std::vector<std::vector<std::string>> directories;
 /** append buffer **/
 std::string appendBuffer="";
 
@@ -185,100 +178,6 @@ int getWindowSize(int& rows, int& cols){
     return 0;
 }
 
-/** init **/
-void initExplorer(){
-    exCfg.cx=0;
-    exCfg.cy=0;
-    if(getWindowSize(exCfg.explorerRows, exCfg.explorerColumns)==-1) die("getWindowSize");
-}
-
-/**util**/
-std::string formatBytes(double val){
-    double kb = 1024;
-    double mb = 1024*1024;
-    double gb = 1024*1024*1024;
-    double formattedVal;
-    std::string res;
-    if(val<kb){
-        return std::to_string(val);
-    } 
-    else if(val>kb && val<mb){
-        formattedVal = val/kb;
-        res+=" KB";
-    }else if(val>mb && val<gb){
-        formattedVal = val/mb;
-        res+=" MB";
-    }else{
-        formattedVal = val/gb;
-        res+=" GB";
-    }
-
-    res = std::to_string(formattedVal)+res;
-    return res;
-}
-
-std::string getPermissions(mode_t perm){
-   
-    std::string modVal="---------";
-    
-    modVal[0] = (perm & S_IRUSR) ? 'r' : '-';
-    modVal[1] = (perm & S_IWUSR) ? 'w' : '-';
-    modVal[2] = (perm & S_IXUSR) ? 'x' : '-';
-    modVal[3] = (perm & S_IRGRP) ? 'r' : '-';
-    modVal[4] = (perm & S_IWGRP) ? 'w' : '-';
-    modVal[5] = (perm & S_IXGRP) ? 'x' : '-';
-    modVal[6] = (perm & S_IROTH) ? 'r' : '-';
-    modVal[7] = (perm & S_IWOTH) ? 'w' : '-';
-    modVal[8] = (perm & S_IXOTH) ? 'x' : '-';
-    return modVal;     
-}
-
-int populateCurrDirectory(){
-    osd.directories.clear();
-    DIR* dir = opendir(osd.d.c_str());
-    if(dir==NULL) return 1;
-    struct dirent* entity;
-    struct stat statBuff;
-    entity = readdir(dir);
-    
-    while (entity!=NULL){
-        std::vector<std::string> dirDetails;
-        stat(entity->d_name, &statBuff);
-        
-        dirDetails.push_back(entity->d_name);
-
-        double sz = statBuff.st_size;
-        std::string fileSize = formatBytes(sz);
-        dirDetails.push_back(fileSize);
-        dirDetails.push_back(getgrgid(statBuff.st_uid)->gr_name);
-        dirDetails.push_back(getpwuid(statBuff.st_gid)->pw_name);
-        
-        
-        char time_buf[80];
-        // std::string timeBuff;
-        struct tm ts;
-        ts = *localtime(&statBuff.st_mtim.tv_sec);
-        strftime(time_buf, sizeof(time_buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
-      
-        std::string lastMod(asctime(&ts));
-        lastMod=lastMod.substr(4,12);
-        // std::cout<<lastMod<<"\n";
-        // processKeyPress();
-        dirDetails.push_back(lastMod);
-        std::string permData = getPermissions(statBuff.st_mode);
-        dirDetails.push_back(permData);
-
-        if(S_ISDIR(statBuff.st_mode)) dirDetails.push_back("1");
-        else dirDetails.push_back("0");
-
-        osd.directories.push_back(dirDetails);
-        
-        entity = readdir(dir);
-    }
-    std::sort(osd.directories.begin(), osd.directories.end());
-    return 0;
-}
-
 /** input **/
 void processKeyPress(){
     char c = readKey();
@@ -287,39 +186,14 @@ void processKeyPress(){
     //here since the 5th bit is also discarded 
     //it doesnt matter if its lowercase/uppercase q.
     //5th bit set to 1 is lowercase
-    if(c=='w' && exCfg.cy>=1){
-        if(exCfg.cy==1 && osd.startInd>0){
-            if(osd.currPos>0){
-                osd.startInd--;
-                osd.currPos--;
-            }
-        }
-        else {
-            exCfg.cy--;
-            osd.currPos--;
-        }
+    if(c=='w' && exCfg.cy>0){
+        exCfg.cy--;
     }
 
-    if(c=='s' && exCfg.cy<osd.directories.size()-1 && exCfg.cy<=exCfg.explorerRows-4){
-        if(exCfg.cy==exCfg.explorerRows-4){
-            if(osd.currPos < osd.directories.size()-1){
-                osd.startInd++;
-                osd.currPos++;
-            }
-        }
-        else {
-            exCfg.cy++;
-            osd.currPos++;
-        }
+    if(c=='s' && exCfg.cy<exCfg.explorerRows-4){
+        exCfg.cy++;
     }
 
-    if(c=='\r'){
-        if(osd.directories[osd.currPos][6]=="1"){
-            osd.d+="/"+osd.directories[osd.currPos][0];
-            populateCurrDirectory();
-        }
-        
-    }
     c=LOWTOUP(c);
     if(c=='Q'){
         //to change the colors back to default 
@@ -333,7 +207,7 @@ void processKeyPress(){
 /** output **/
 void drawExplorerRows(){
     int n = exCfg.explorerRows;
-    int m = osd.directories.size();
+    int m = directories.size();
     int eCols=exCfg.explorerColumns;
     int dCols=6;
     int maxOccupancy = eCols/dCols;
@@ -372,8 +246,8 @@ void drawExplorerRows(){
         }else draw+="\x1b[K";
 
         
-        if(i>0 && (i-1+osd.startInd)<m && i<n-3){
-            std::vector<std::string> dirDetails = osd.directories[i-1+osd.startInd];
+        if(i>0 && (i-1)<m && i<n-3){
+            std::vector<std::string> dirDetails = directories[i-1];
             
             moveCursor(0,0,5,0,draw);
             if(dirDetails[0].size()<maxOccupancy) draw+=dirDetails[0];
@@ -408,6 +282,25 @@ void drawExplorerRows(){
         draw+="\r\n";
     }
     appendBuffer+=draw;
+    //for reference
+    // for(int i=0; i<n; i++){
+    //     //\x1b[K is for clearing each line
+    //     //2 erases the whole line, 1 erases the part of the line to the left of the cursor, 
+    //     //and 0 erases the part of the line to the right of the cursor. 
+    //     //0 is the default argument, and that’s what we want, 
+    //     //so we leave out the argument and just use <esc>[K.
+    //     if(i==n-1) appendBuffer+="\x1b[K\x1b[H";
+    //     else if(i==n-2){
+    //         std::string title = "Normal Mode: ";
+    //         title+=currDirectory;
+    //         int titleLength=title.size();
+    //
+    //         if(titleLength<=exCfg.explorerColumns) appendBuffer+=title;
+    //         else appendBuffer+=title.substr(0, exCfg.explorerColumns);
+    //         appendBuffer+="\x1b[K\r\n";
+    //     }
+    //     else appendBuffer+="\x1b[K\n\r";
+    // }
 
 }
 
@@ -450,24 +343,106 @@ void refreshExplorerScreen(){
     write(STDOUT_FILENO, appendBuffer.c_str(), appendBuffer.size());
     appendBuffer="";
 
-    int x, y;
-    getCursorPosition(y, x);
-    int index = y-2;
-    appendBuffer+="\x1b[0;0;60b";
-    write(STDOUT_FILENO, appendBuffer.c_str(), appendBuffer.size());
-    appendBuffer="";
+    // int x, y;
+    // getCursorPosition(y, x);
+    // int index = y-2;
+    // appendBuffer+="->\x1b[";
+    // write(STDOUT_FILENO, appendBuffer.c_str(), appendBuffer.size());
+    // appendBuffer="";
     // std::cout<<x<<" "<<y<<"\n";
 }
 
+/** init **/
+void initExplorer(){
+    exCfg.cx=0;
+    exCfg.cy=0;
+    if(getWindowSize(exCfg.explorerRows, exCfg.explorerColumns)==-1) die("getWindowSize");
+}
+
+/**util**/
+std::string formatBytes(double val){
+    double kb = 1024;
+    double mb = 1024*1024;
+    double gb = 1024*1024*1024;
+    double formattedVal;
+    std::string res;
+    if(val<kb){
+        return std::to_string(val);
+    } 
+    else if(val>kb && val<mb){
+        formattedVal = val/kb;
+        res+=" KB";
+    }else if(val>mb && val<gb){
+        formattedVal = val/mb;
+        res+=" MB";
+    }else{
+        formattedVal = val/gb;
+        res+=" GB";
+    }
+
+    res = std::to_string(formattedVal)+res;
+    return res;
+}
+std::string getPermissions(mode_t perm){
+   
+    std::string modVal="---------";
+    
+    modVal[0] = (perm & S_IRUSR) ? 'r' : '-';
+    modVal[1] = (perm & S_IWUSR) ? 'w' : '-';
+    modVal[2] = (perm & S_IXUSR) ? 'x' : '-';
+    modVal[3] = (perm & S_IRGRP) ? 'r' : '-';
+    modVal[4] = (perm & S_IWGRP) ? 'w' : '-';
+    modVal[5] = (perm & S_IXGRP) ? 'x' : '-';
+    modVal[6] = (perm & S_IROTH) ? 'r' : '-';
+    modVal[7] = (perm & S_IWOTH) ? 'w' : '-';
+    modVal[8] = (perm & S_IXOTH) ? 'x' : '-';
+    return modVal;     
+}
 int main(){
 
-   
+    DIR* dir = opendir(".");
+    if(dir==NULL) return 1;
+    struct dirent* entity;
+    struct stat statBuff;
+    entity = readdir(dir);
+    
+    while (entity!=NULL){
+        std::vector<std::string> dirDetails;
+        stat(entity->d_name, &statBuff);
+        
+        dirDetails.push_back(entity->d_name);
+
+        double sz = statBuff.st_size;
+        std::string fileSize = formatBytes(sz);
+        dirDetails.push_back(fileSize);
+        dirDetails.push_back(getgrgid(statBuff.st_uid)->gr_name);
+        dirDetails.push_back(getpwuid(statBuff.st_gid)->pw_name);
+        
+        
+        char time_buf[80];
+        // std::string timeBuff;
+        struct tm ts;
+        ts = *localtime(&statBuff.st_mtim.tv_sec);
+        strftime(time_buf, sizeof(time_buf), "%a %Y-%m-%d %H:%M:%S %Z", &ts);
+      
+        std::string lastMod(asctime(&ts));
+        lastMod=lastMod.substr(4,12);
+        // std::cout<<lastMod<<"\n";
+        // processKeyPress();
+        dirDetails.push_back(lastMod);
+        std::string permData = getPermissions(statBuff.st_mode);
+        dirDetails.push_back(permData);
+
+        directories.push_back(dirDetails);
+        entity = readdir(dir);
+    }
+    std::sort(directories.begin(), directories.end());
 
     // for(std::vector<std::string> dir : directories){
     //     std::cout<<dir[0]<<"   "<<dir[1]<<"\n";
     // }
     // processKeyPress();
-    if(populateCurrDirectory()!=0) die("populateCurrDirectory");
+
     enableRawMode();
     initExplorer();
 
