@@ -24,6 +24,7 @@
 /**functions**/
 void refreshExplorerScreen();
 void initWindowSize();
+std::string getCurrDirectory();
 
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
@@ -43,18 +44,18 @@ struct explorerConfig{
     struct termios origTermios;
 }exCfg;
 
-struct currDirectoryDetails{
-    std::string currDirectory="current dir";
-    std::string user=getpwuid(getuid())->pw_name;
-    std::stack<std::string> dirHistory;
-}currDirDet;
-
 struct onScreenDirectories{
     std::vector<std::vector<std::string>> directories;
     int currPos=0;
     int startInd=0;
-    std::string d=".";
+    std::string d=getCurrDirectory();
 }osd;
+
+struct currDirectoryDetails{
+    std::string currDirectory="init";
+    std::string user=getpwuid(getuid())->pw_name;
+    std::stack<std::string> dirHistory;
+}currDirDet;
 
 
 /** append buffer **/
@@ -281,6 +282,13 @@ std::string getPermissions(mode_t perm){
     return modVal;     
 }
 
+std::string getCurrDirectory() {
+   char buff[FILENAME_MAX]; 
+   getcwd( buff, FILENAME_MAX );
+   std::string currDir(buff);
+   return currDir;
+}
+
 int populateCurrDirectory(){
     osd.directories.clear();
     DIR* dir = opendir(osd.d.c_str());
@@ -324,6 +332,7 @@ int populateCurrDirectory(){
         entity = readdir(dir);
     }
     std::sort(osd.directories.begin(), osd.directories.end());
+    //to avoid cursor overflowingthe number of rows printed
     exCfg.cy=0;
     osd.startInd=0;
     osd.currPos=0;
@@ -472,7 +481,7 @@ void drawExplorerRows(){
             draw+="PERMISSIONS";
         }else if(i==n-2) {
             draw+="\x1b[K Normal Mode: ";
-            draw+=currDirDet.currDirectory;
+            draw+=osd.d;
         }else draw+="\x1b[K";
 
         
