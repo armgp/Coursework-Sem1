@@ -24,6 +24,7 @@
 /**functions**/
 void refreshExplorerScreen();
 void initWindowSize();
+void processKeyPress();
 std::string getCurrDirectory();
 
 /** define **/
@@ -52,9 +53,9 @@ struct onScreenDirectories{
 }osd;
 
 struct currDirectoryDetails{
-    std::string currDirectory="init";
-    std::string user=getpwuid(getuid())->pw_name;
-    std::stack<std::string> dirHistory;
+    std::string user=getpwuid(getuid())->pw_dir;
+    std::stack<std::string> bwdHistory;
+    std::stack<std::string> fwdHistory;
 }currDirDet;
 
 
@@ -266,19 +267,19 @@ std::string formatBytes(double val){
     return res;
 }
 
-std::string getPermissions(mode_t perm){
+std::string getPermissions(mode_t permission){
    
     std::string modVal="---------";
     
-    modVal[0] = (perm & S_IRUSR) ? 'r' : '-';
-    modVal[1] = (perm & S_IWUSR) ? 'w' : '-';
-    modVal[2] = (perm & S_IXUSR) ? 'x' : '-';
-    modVal[3] = (perm & S_IRGRP) ? 'r' : '-';
-    modVal[4] = (perm & S_IWGRP) ? 'w' : '-';
-    modVal[5] = (perm & S_IXGRP) ? 'x' : '-';
-    modVal[6] = (perm & S_IROTH) ? 'r' : '-';
-    modVal[7] = (perm & S_IWOTH) ? 'w' : '-';
-    modVal[8] = (perm & S_IXOTH) ? 'x' : '-';
+    modVal[0] = (permission & S_IRUSR) ? 'r' : '-';
+    modVal[1] = (permission & S_IWUSR) ? 'w' : '-';
+    modVal[2] = (permission & S_IXUSR) ? 'x' : '-';
+    modVal[3] = (permission & S_IRGRP) ? 'r' : '-';
+    modVal[4] = (permission & S_IWGRP) ? 'w' : '-';
+    modVal[5] = (permission & S_IXGRP) ? 'x' : '-';
+    modVal[6] = (permission & S_IROTH) ? 'r' : '-';
+    modVal[7] = (permission & S_IWOTH) ? 'w' : '-';
+    modVal[8] = (permission & S_IXOTH) ? 'x' : '-';
     return modVal;     
 }
 
@@ -299,7 +300,10 @@ int populateCurrDirectory(){
     
     while (entity!=NULL){
         std::vector<std::string> dirDetails;
-        stat(entity->d_name, &statBuff);
+        std::string dname(entity->d_name);
+        dname=osd.d+"/"+dname;
+        stat(dname.c_str(), &statBuff);
+        
         
         dirDetails.push_back(entity->d_name);
 
@@ -339,6 +343,16 @@ int populateCurrDirectory(){
     return 0;
 }
 
+void removeLastDir(std::string& d){
+    int n = d.size();
+    for(int i=n-1; i>=0; i--){
+        if(d[i]=='/'){
+            d=d.substr(0, i);
+            break;   
+        }
+    }
+}
+
 /** input **/
 void processKeyPress(){
     char c = readKey();
@@ -374,19 +388,21 @@ void processKeyPress(){
     }
 
     else if(c=='d'){
-        //to change the colors back to default 
-        write(STDOUT_FILENO, "\x1b[0m", 4);
-        //to clear screen when exiting
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        exit(0);   
+        if(!currDirDet.fwdHistory.empty()){
+            currDirDet.bwdHistory.push(osd.d);
+            osd.d=currDirDet.fwdHistory.top();
+            currDirDet.fwdHistory.pop();
+            populateCurrDirectory();
+        }
     }
 
     else if(c=='a'){
-        //to change the colors back to default 
-        write(STDOUT_FILENO, "\x1b[0m", 4);
-        //to clear screen when exiting
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        exit(0);
+        if(!currDirDet.bwdHistory.empty()){
+            currDirDet.fwdHistory.push(osd.d);
+            osd.d=currDirDet.bwdHistory.top();
+            currDirDet.bwdHistory.pop();
+            populateCurrDirectory();
+        }
     }
 
     else if(c==DELETE){
@@ -398,23 +414,24 @@ void processKeyPress(){
     }
 
     else if(c==HOME || c== 'h' || c== 'H'){
-        osd.d="/home/"+currDirDet.user;
+        currDirDet.bwdHistory.push(osd.d);
+        osd.d=currDirDet.user;
         populateCurrDirectory();
     }
 
     else if(c==BACKSPACE){
-        //to change the colors back to default 
-        write(STDOUT_FILENO, "\x1b[0m", 4);
-        //to clear screen when exiting
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        exit(0);
+        currDirDet.bwdHistory.push(osd.d);
+        removeLastDir(osd.d);
+        populateCurrDirectory();
     }
 
     else if(c=='\r'){
-        if(osd.directories[osd.currPos][6]=="1"){
-            osd.d+="/"+osd.directories[osd.currPos][0];
+        if(osd.directories[osd.currPos][6]=="1" && osd.directories[osd.currPos][0]!="."){
+            currDirDet.bwdHistory.push(osd.d);
+            if(osd.directories[osd.currPos][0]=="..") removeLastDir(osd.d);
+            else osd.d+="/"+osd.directories[osd.currPos][0];
             populateCurrDirectory();
-        }else{
+        }else if(osd.directories[osd.currPos][6]=="0"){
             std::string temp=osd.d;
             osd.d+="/"+osd.directories[osd.currPos][0];
             //only child process will have fork()=0
