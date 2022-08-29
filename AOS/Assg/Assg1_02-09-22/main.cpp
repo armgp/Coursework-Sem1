@@ -18,10 +18,18 @@
 #include <grp.h>
 #include <pwd.h>
 #include <time.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define LOWTOUP(k) ((k) & 0xdf)
+
+enum editorKey {
+  HOME,
+  DELETE,
+  BACKSPACE=127
+};
 
 /** data **/
 struct explorerConfig{
@@ -111,12 +119,34 @@ char readKey(){
         if (read(STDIN_FILENO, &seq[0], 1) != 1) return '\x1b';
         if (read(STDIN_FILENO, &seq[1], 1) != 1) return '\x1b';
         if (seq[0] == '[') {
+            if (seq[1] >= '0' && seq[1] <= '9') {
+                if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
+                if (seq[2] == '~') {
+                    switch (seq[1]) {
+                        case '1': return HOME;
+                        case '3': return DELETE;
+                        case '7': return HOME;
+                    }
+                }
+            }
+            else{
+                switch (seq[1]) {
+                    case 'A': return 'w';
+                    case 'B': return 's';
+                    case 'C': return 'd';
+                    case 'D': return 'a';
+                    case 'H': return HOME;
+                }
+            }
+        }else if(seq[0]=='O'){
             switch (seq[1]) {
-                case 'A': return 'w';
-                case 'B': return 's';
+                case 'H': return HOME;
             }
         }
-    return '\x1b';
+
+
+
+        return '\x1b';
     }
 
     return c;
@@ -300,7 +330,7 @@ void processKeyPress(){
         }
     }
 
-    if(c=='s' && exCfg.cy<osd.directories.size()-1 && exCfg.cy<=exCfg.explorerRows-4){
+    else if(c=='s' && exCfg.cy<osd.directories.size()-1 && exCfg.cy<=exCfg.explorerRows-4){
         if(exCfg.cy==exCfg.explorerRows-4){
             if(osd.currPos < osd.directories.size()-1){
                 osd.startInd++;
@@ -313,13 +343,69 @@ void processKeyPress(){
         }
     }
 
-    if(c=='\r'){
+    else if(c=='d'){
+        //to change the colors back to default 
+        write(STDOUT_FILENO, "\x1b[0m", 4);
+        //to clear screen when exiting
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        exit(0);   
+    }
+
+    else if(c=='a'){
+        //to change the colors back to default 
+        write(STDOUT_FILENO, "\x1b[0m", 4);
+        //to clear screen when exiting
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        exit(0);
+    }
+
+    else if(c==DELETE){
+        //to change the colors back to default 
+        write(STDOUT_FILENO, "\x1b[0m", 4);
+        //to clear screen when exiting
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        exit(0);
+    }
+
+    else if(c==HOME){
+        //to change the colors back to default 
+        write(STDOUT_FILENO, "\x1b[0m", 4);
+        //to clear screen when exiting
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        exit(0);
+    }
+
+    else if(c==BACKSPACE){
+        //to change the colors back to default 
+        write(STDOUT_FILENO, "\x1b[0m", 4);
+        //to clear screen when exiting
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        exit(0);
+    }
+
+    else if(c=='\r'){
         if(osd.directories[osd.currPos][6]=="1"){
             osd.d+="/"+osd.directories[osd.currPos][0];
             populateCurrDirectory();
+        }else{
+            std::string temp=osd.d;
+            osd.d+="/"+osd.directories[osd.currPos][0];
+            //only child process will have fork()=0
+            int pid=fork();
+            if(pid==0){
+                execl("/usr/bin/vi", "vi", osd.d.c_str(), (char *)0);
+                exit(1);
+            }else{
+                int wval, status=0;
+                while ((wval=waitpid(pid, &status, 0)) != pid){
+                    if (wval == -1) exit(1); 
+                }
+            }
+            osd.d=temp;
         }
         
     }
+
     c=LOWTOUP(c);
     if(c=='Q'){
         //to change the colors back to default 
@@ -461,12 +547,6 @@ void refreshExplorerScreen(){
 
 int main(){
 
-   
-
-    // for(std::vector<std::string> dir : directories){
-    //     std::cout<<dir[0]<<"   "<<dir[1]<<"\n";
-    // }
-    // processKeyPress();
     if(populateCurrDirectory()!=0) die("populateCurrDirectory");
     enableRawMode();
     initExplorer();
