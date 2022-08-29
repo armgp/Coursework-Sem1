@@ -44,7 +44,8 @@ struct explorerConfig{
 }exCfg;
 
 struct currDirectoryDetails{
-    std::string currDirectory=getpwuid(getuid())->pw_name;
+    std::string currDirectory="current dir";
+    std::string user=getpwuid(getuid())->pw_name;
     std::stack<std::string> dirHistory;
 }currDirDet;
 
@@ -68,6 +69,7 @@ void handleWindowSizeChange(){
     int currCy=exCfg.explorerRows;
     if(currCx!=prevCx || currCy!=prevCy) refreshExplorerScreen();
 }
+
 void die(const char* s){
     //screen cleared and cursor repositioned
     //we can also see the error after clearing of the screen
@@ -322,6 +324,9 @@ int populateCurrDirectory(){
         entity = readdir(dir);
     }
     std::sort(osd.directories.begin(), osd.directories.end());
+    exCfg.cy=0;
+    osd.startInd=0;
+    osd.currPos=0;
     return 0;
 }
 
@@ -384,11 +389,8 @@ void processKeyPress(){
     }
 
     else if(c==HOME || c== 'h' || c== 'H'){
-        //to change the colors back to default 
-        write(STDOUT_FILENO, "\x1b[0m", 4);
-        //to clear screen when exiting
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        exit(0);
+        osd.d="/home/"+currDirDet.user;
+        populateCurrDirectory();
     }
 
     else if(c==BACKSPACE){
