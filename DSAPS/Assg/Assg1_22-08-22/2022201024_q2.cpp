@@ -1,7 +1,4 @@
 #include <iostream>
-#include <bits/stdc++.h>
-#define int int64_t
-#define fast ios::sync_with_stdio(0);cin.tie(0);cout.tie(0);
 using namespace std;
 
 template <typename T> class Deque{
@@ -13,30 +10,21 @@ private:
     int qSize;
 
 public:
-    //constructor OK.
+
+    int capacit(){
+        return capacity;
+    }
+
     Deque(){
         arr = new T[capacity];
         frontPtr=-1;
         backPtr=-1;
         qSize=0;
     }
-    //constructor OK.
-    Deque(int n, T x){
-        capacity=n;
-        arr = new T[capacity];
-        for(int i=0; i<n; i++){
-            arr[i]=x;
-        }
-        frontPtr=n-1;
-        backPtr=0;
-        qSize=n;
-    }
-
-    int capacit(){
-        return capacity;
-    }
 
     //member functions
+    void deque();
+    void deque(int n, T x);
     void resize();
     void resize(int x, T d);
     void push_back(T x);
@@ -50,6 +38,24 @@ public:
     T& operator[](int index);
     void clear();
 };
+
+template <typename T> void Deque<T>::deque(){
+        arr = new T[capacity];
+        frontPtr=-1;
+        backPtr=-1;
+        qSize=0;
+}
+
+template <typename T> void Deque<T>::deque(int n, T x){
+        capacity=n;
+        arr = new T[capacity];
+        for(int i=0; i<n; i++){
+            arr[i]=x;
+        }
+        frontPtr=n-1;
+        backPtr=0;
+        qSize=n;
+}
 
 template <typename T> void Deque<T>::resize(){
     int newCapacity = (3*capacity)/2;
@@ -68,6 +74,11 @@ template <typename T> void Deque<T>::resize(){
 }
 
 template <typename T> void Deque<T>::resize(int x, T d){
+    if(qSize==0){
+        deque(x, d);
+        return;
+    }
+
     T* newArr = new T[x];
     if(x<qSize){
         backPtr=backPtr+(qSize-x);
@@ -169,7 +180,8 @@ template <typename T> int Deque<T>::size(){
 template <typename T> T& Deque<T>::operator[](int index){
         int i;
         if(index>=qSize) {
-            throw "Index out of bounds";
+            cout<<"Index out of bounds \n";
+            return arr[0];
         }
         else{
             i = (frontPtr-index)%capacity;
@@ -180,131 +192,59 @@ template <typename T> T& Deque<T>::operator[](int index){
         return arr[i];
 }
 
-signed main(){
-    fast;
-     Deque<int> q;
-     deque<int> Q;
-     cout<<q.front()<<"\n";
+int main(){
+    cout<<"Enter the operation number: \n";
+    int n;
+    cin>>n;
     
-    for (int i = 1; i < 17; i++){
-        if (i % 2 == 0){
-            q.push_back(i);
-            Q.push_back(i);
-        }
-        else{
-            q.push_front(i);
-            Q.push_front(i);
-        }
-    }
- 
-    for(int i=0; i<q.size(); i++){
-        cout<<q[i]<<" ";
-    }
-    cout<<"\n";
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
-    }
-    cout<<"\n \n";
+    //template -> int
+    Deque<int> q;
+    int val;
 
-    
-    q.resize(7, 99);
-    Q.resize(7, 99);
-
-    for(int i=0; i<q.size(); i++){
-        cout<<q[i]<<" ";
-    }
-    cout<<"\n";
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
-    }
-
-
-    cout<<"\n";
-    cout<<q.back()<<"\n";
-    cout<<Q.back()<<"\n \n";
-
-    q.clear();
-    Q.clear();
-
-    q.push_back(1012);
-    Q.push_back(1012);
-
-    for(int i=0; i<q.size(); i++){
-        cout<<q[i]<<" ";
-    }
-    cout<<"\n";
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
-    }
-    cout<<"\n \n";
-
-    q.resize(12, 33);
-    Q.resize(12, 33);
-
-    for(int i=0; i<q.size(); i++){
-        cout<<q[i]<<" ";
-    }
-    cout<<"\n";
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
-    }
-    cout<<"\n \n";
-
-    cout<<q.front()<<" "<<Q.front()<<"\n";
-    cout<<q.back()<<" "<<Q.back()<<"\n \n";
-
-    q.push_back(19);
-    Q.push_back(19);
-
-    q.push_front(0);
-    Q.push_front(0);
-
-    cout<<q.front()<<" "<<q.back()<<"\n";
-    cout<<Q.front()<<" "<<Q.back()<<"\n \n";
-
-    for(int i=0; i<q.size(); i++){
-        cout<<q[i]<<" ";
-    }
-    cout<<"\n";
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
+    while(1){
+        if(n==1){
+            q.deque();
+        }else if(n==2){
+            cout<<"Enter the size and default value: \n";
+            int N;
+            cin>>N>>val;
+            q.deque(N, val);
+        }else if(n==3){
+            cout<<"Enter value to push back: \n";
+            cin>>val;
+            q.push_back(val);
+        }else if(n==4){
+            q.pop_back();
+        }else if(n==5){
+            cout<<"Enter value to push front: \n";
+            cin>>val;
+            q.push_front(val);
+        }else if(n==6){
+            q.pop_front();
+        }else if(n==7){
+            cout<<q.front()<<"\n";
+        }else if(n==8){
+            cout<<q.back()<<"\n";
+        }else if(n==9){
+            cout<<"Enter a valid index(lesser than queue size): \n";
+            int k;
+            cin>>k;
+            cout<<q[k]<<"\n";
+        }else if(n==10){
+            cout<<q.empty()<<"\n";
+        }else if(n==11){
+            cout<<q.size()<<"\n";
+        }else if(n==12){
+            cout<<"Enter the size and default value: \n";
+            int k;
+            cin>>k>>val;
+            q.resize(k, val);
+        }else if(n==13){
+            q.clear();
+        }else break;
+        cin>>n;
     }
 
-    q.resize(3, 0);
-    Q.resize(3, 0);
-
-    cout<<"\n \n";
-    for(int i=0; i<q.size(); i++){
-        cout<<q[i]<<" ";
-    }
-    cout<<"\n";
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
-    }
-    cout<<"\n \n";
-
-    q.resize(17, -1);
-    Q.resize(17, -1);
-    q.push_back(33);
-    Q.push_back(33);
-    q.push_front(44);
-    Q.push_front(44);
-
-    cout<<q.back()<<" "<<Q.back()<<"\n";
-    cout<<q.front()<<" "<<Q.front()<<"\n";
-
-    for(int i=0; i<q.size(); i++){
-        cout<<q[i]<<" ";
-    }
-    cout<<"\n";
-    for(int i=0; i<Q.size(); i++){
-        cout<<Q[i]<<" ";
-    }
-    cout<<"\n \n";
-
-
-
-    cout<<"-------------------------------------------------------------------------"<<"\n";
     return 0;
 }
 

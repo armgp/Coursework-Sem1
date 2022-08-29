@@ -65,7 +65,7 @@ int* getHorizontalSeam(int** costMatrix,  int H, int W){
     int* hSeam = new int[W];
     int idx=0;
 
-    //find min element index in last row
+    //find min element index in last column
     int minVal=costMatrix[0][W-1];
     for(int i=1; i<H; i++){
         if(costMatrix[i][W-1]<minVal){

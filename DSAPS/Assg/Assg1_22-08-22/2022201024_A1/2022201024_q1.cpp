@@ -1,9 +1,20 @@
 #include <iostream>
 #define int int64_t
-#define fast ios::sync_with_stdio(0);cin.tie(0);cout.tie(0);
 using namespace std;
 
-//OK
+string cleanStringBigInt(string a){
+    int aLength=a.size();
+    int st=aLength-1;
+    for(int ind=0; ind<aLength; ind++){
+        if(a[ind]!='0'){
+            st=ind;
+            break;
+        }
+    }
+
+    return a.substr(st, aLength-st);
+}
+
 bool bigIntGreaterThan(string a, string b){
     if(a.size()>b.size()) return true;
     else if(a.size()<b.size()) return false;
@@ -16,7 +27,7 @@ bool bigIntGreaterThan(string a, string b){
     }
     return false;
 }
-//OK
+
 bool bigIntLesserThan(string a, string b){
     if(a.size()<b.size()) return true;
     else if(a.size()>b.size()) return false;
@@ -29,7 +40,7 @@ bool bigIntLesserThan(string a, string b){
     }
     return false;
 }
-//OK
+
 bool bigIntEqualTo(string a, string b){
     if(a.size()!=b.size()) return false;
     int n=a.size();
@@ -39,8 +50,9 @@ bool bigIntEqualTo(string a, string b){
     return true;
 }
 
-//OK
 string bigIntAdd(string a, string b){
+    a=cleanStringBigInt(a);
+    b=cleanStringBigInt(b);
     string res="";
     int i=a.size()-1, j=b.size()-1;
     int carry=0;
@@ -117,8 +129,9 @@ string bigIntAdd(string a, string b){
 
     return res;
 }
-//OK
+
 string bigIntSubtract(string a, string b){
+    if(b=="0") return a;
     string res="";
     int i=a.size()-1, j=b.size()-1;
     int borrow=0;
@@ -149,18 +162,9 @@ string bigIntSubtract(string a, string b){
         i--;
     }
 
-    int resLength=res.size();
-    int ansStart=0;
-    for(int ind=0; ind<resLength; ind++){
-        if(res[ind]!='0'){
-            ansStart=ind;
-            break;
-        }
-    }
-
-    return res.substr(ansStart, resLength-ansStart);
+    return cleanStringBigInt(res);
 }
-//OK
+
 string bigIntMultiply(string a, string b){
     string product="0";
     int n=a.size(), m=b.size();
@@ -203,41 +207,7 @@ string bigIntMultiply(string a, string b){
     }
     return product;
 }
-//OK
-string bigIntDivide(string a, string b){
-    if(bigIntLesserThan(a, b) || a=="0") return "0";
-    else if(bigIntEqualTo(a, b)) return "1";
-    else if(b=="1") return a;
-    else if(b=="0"){
-        throw "cannot be divided by 0";
-    }
 
-    string res="0";
-    string curr="0";
-    int n=a.size();
-    for(int i=0; i<n; i++){
-        curr=bigIntMultiply(curr, "10");
-        string currDig="";
-        currDig+=a[i];
-        curr=bigIntAdd(curr, currDig);
-        if(bigIntGreaterThan(curr, b) || bigIntEqualTo(curr, b)){
-            for(int j=9; j>=1; j--){
-                char v = '0'+j;
-                string J = "";
-                J=J+v;
-                string val = bigIntMultiply(b, J);
-                if(bigIntLesserThan(val, curr) || bigIntEqualTo(val, curr)){
-                    res=bigIntAdd(bigIntMultiply(res,"10"), J);
-                    curr = bigIntSubtract(curr, val);
-                    break;
-                }
-            }
-        }else res=bigIntMultiply(res,"10");
-    }
-    return res;
-
-}
-//OK
 string bigIntModulo(string a, string b){
     if(bigIntLesserThan(a, b)) return a;
     else if(bigIntEqualTo(a, b) || b=="1") return "0";
@@ -245,35 +215,28 @@ string bigIntModulo(string a, string b){
         throw "cannot be divided by 0";
     }
 
-    string curr="0";
-    int n=a.size();
-    for(int i=0; i<n; i++){
-        curr=bigIntMultiply(curr, "10");
-        string currDig="";
-        currDig+=a[i];
-        curr=bigIntAdd(curr, currDig);
-        if(bigIntGreaterThan(curr, b) || bigIntEqualTo(curr, b)){
-            for(int j=9; j>=1; j--){
-                char v = '0'+j;
-                string J = "";
-                J=J+v;
-                string val = bigIntMultiply(b, J);
-                if(bigIntLesserThan(val, curr) || bigIntEqualTo(val, curr)){
-                    curr = bigIntSubtract(curr, val);
-                    break;
-                }
-            }
+    int bSize=b.size();
+    while(bigIntGreaterThan(a, b)){
+        string val = a.substr(0, bSize);
+        int end=bSize-1;
+        if(bigIntLesserThan(val, b)){
+            val = a.substr(0, bSize+1);
+            end=bSize;
+        } 
+        while(!bigIntGreaterThan(b, val)){
+            val = bigIntSubtract(val, b);
         }
+        a=val+a.substr(end+1);
+        a=cleanStringBigInt(a);
     }
-    return curr;
+    a=cleanStringBigInt(a);
+    return a;
 }
 
-//1.OK
 string addSubMul(string eq){
     int n = eq.size();
-    string numbers[(n/2)+1];
+    string numbers[n];
 
-    //creating an array of numbers and symbols
     int start=0;
     int idx=0;
     for(int i=0; i<=n; i++){
@@ -298,43 +261,39 @@ string addSubMul(string eq){
         }
     }
 
-    //using numbers array for calculation
     int numbersLength = idx;
-
-    //first all multiplication ops are done
-    int j=0;
-    string multipliedResults[numbersLength];
     for(int i=0; i<numbersLength; i++){
         if(numbers[i]=="x"){
             string mulRes = bigIntMultiply(numbers[i-1], numbers[i+1]);
-            multipliedResults[j-1] = mulRes;
+            numbers[i-1] = "#";
+            numbers[i]="#";
+            numbers[i+1]=mulRes;
             i++;
-        }else{
-            multipliedResults[j++]=numbers[i];
         }
     }
-    int mulResLength = j;
 
-    for(int i=0; i<mulResLength; i++){
-        cout<<multipliedResults[i]<<"\n";
+    int k=0;
+    string resNumbers[numbersLength];
+    for(int i=0; i<numbersLength; i++){
+        if(numbers[i]!="#") resNumbers[k++]=numbers[i];
     }
-    cout<<"---------------------"<<"\n"<<"\n";
 
-    j=0;
+    int j=0;
     string finalResults[3];
-    for(int i=0; i<mulResLength; i++){
-        if(multipliedResults[i]=="+" || multipliedResults[i]=="-"){
-            string opRes = (multipliedResults[i]=="+" ? bigIntAdd(multipliedResults[i-1], multipliedResults[i+1]) : bigIntSubtract(multipliedResults[i-1], multipliedResults[i+1]));
+    for(int i=0; i<k; i++){
+        if(resNumbers[i]=="+" || resNumbers[i]=="-"){
+            string opRes = (resNumbers[i]=="+" ? bigIntAdd(resNumbers[i-1], resNumbers[i+1]) : bigIntSubtract(resNumbers[i-1], resNumbers[i+1]));
             finalResults[j-1] = opRes;
             i++;
-            multipliedResults[i]=opRes;
+            resNumbers[i]=opRes;
         }else{
-            finalResults[j++]=multipliedResults[i];
+            finalResults[j++]=resNumbers[i];
         }
     }
     return finalResults[0];
+
 }
-//2.Check Again
+
 string exp(string x, int n){
     if(n==0) return "1";
     else if(n==1) return x;
@@ -349,14 +308,20 @@ string exp(string x, int n){
     }
     return res;
 }
-//3.Check again (Almost ok..)
-string gcd(string a, string b){
-    if(bigIntModulo(a,b)=="0") return b;
-    return gcd(b, bigIntModulo(a,b));
+
+string bigGcd(string a, string b){
+    if(a=="0" && b=="0") cout<<"GCD(0, 0) is undefined";
+    string r="0";
+    while(!bigIntEqualTo(b, "0")){
+        r=bigIntModulo(a, b);
+        a=b;
+        b=r;
+    }
+    return a;
 }
-//4.OK
+
 string fact(string n){
-    if(n=="0" || n=="1") return n;
+    if(n=="0" || n=="1") return "1";
     string k="1";
     string ans="1";
     while(k!=n){
@@ -364,38 +329,41 @@ string fact(string n){
         k=bigIntAdd(k, "1");
     }
     ans=bigIntMultiply(ans, n);
+    
     return ans;
 }
 
 signed main(){
-    fast;
-    
     int operation;
     cin>>operation;
-    
-    if(operation==1){
-        string str;
-        cin>>str;
-        cout<<addSubMul(str);
-    }else if(operation==2){
-        string x;
-        int n;
-        cin>>x>>n;
-        cout<<exp(x, n);
-    }else if(operation==3){
-        string a, b;
-        cin>>a>>b;
-        cout<<gcd(a, b);
-    }else if(operation==4){
-        string str;
-        cin>>str;
-        cout<<fact(str);
-    }else{
-        cout<<"This Operation doesnt exist"<<"\n";
+    while(1){
+        if(operation==1){
+            string str;
+            cin>>str;
+            cout<<addSubMul(str)<<"\n";
+        }else if(operation==2){
+            string x;
+            int n;
+            cin>>x>>n;
+            x=cleanStringBigInt(x);
+            cout<<exp(x, n)<<"\n";
+        }else if(operation==3){
+            string a, b;
+            cin>>a>>b;
+            a=cleanStringBigInt(a);
+            b=cleanStringBigInt(b);
+            cout<<bigGcd(a, b)<<"\n";
+        }else if(operation==4){
+            string str;
+            cin>>str;
+            cout<<fact(str)<<"\n";
+        }
+        else{
+            cout<<"This Operation doesnt exist.. Exiting!"<<"\n";
+            break;
+        }
+        cin>>operation;
     }
-
-    // cout<<bigIntModulo("", "")<<"\n";
-    // cout<<bigIntMultiply("0", "10")<<"\n";
-
+    
     return 0;
 }

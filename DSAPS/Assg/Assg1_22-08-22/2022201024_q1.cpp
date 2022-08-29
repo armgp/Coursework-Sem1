@@ -16,8 +16,6 @@ string cleanStringBigInt(string a){
 }
 
 bool bigIntGreaterThan(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
     if(a.size()>b.size()) return true;
     else if(a.size()<b.size()) return false;
     else{
@@ -31,8 +29,6 @@ bool bigIntGreaterThan(string a, string b){
 }
 
 bool bigIntLesserThan(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
     if(a.size()<b.size()) return true;
     else if(a.size()>b.size()) return false;
     else{
@@ -46,8 +42,6 @@ bool bigIntLesserThan(string a, string b){
 }
 
 bool bigIntEqualTo(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
     if(a.size()!=b.size()) return false;
     int n=a.size();
     for(int i=0; i<n; i++){
@@ -137,8 +131,6 @@ string bigIntAdd(string a, string b){
 }
 
 string bigIntSubtract(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
     if(b=="0") return a;
     string res="";
     int i=a.size()-1, j=b.size()-1;
@@ -174,8 +166,6 @@ string bigIntSubtract(string a, string b){
 }
 
 string bigIntMultiply(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
     string product="0";
     int n=a.size(), m=b.size();
     
@@ -219,9 +209,6 @@ string bigIntMultiply(string a, string b){
 }
 
 string bigIntModulo(string a, string b){
-    // a=cleanStringBigInt(a);
-    // b=cleanStringBigInt(b);
-
     if(bigIntLesserThan(a, b)) return a;
     else if(bigIntEqualTo(a, b) || b=="1") return "0";
     else if(b=="0"){
@@ -250,7 +237,6 @@ string addSubMul(string eq){
     int n = eq.size();
     string numbers[n];
 
-    //creating an array of numbers and symbols
     int start=0;
     int idx=0;
     for(int i=0; i<=n; i++){
@@ -275,7 +261,6 @@ string addSubMul(string eq){
         }
     }
 
-    //using numbers array for calculation
     int numbersLength = idx;
     for(int i=0; i<numbersLength; i++){
         if(numbers[i]=="x"){
@@ -292,11 +277,6 @@ string addSubMul(string eq){
     for(int i=0; i<numbersLength; i++){
         if(numbers[i]!="#") resNumbers[k++]=numbers[i];
     }
-
-    // for(int i=0; i<k; i++){
-    //     cout<<resNumbers[i]<<"\n";
-    // }
-    // cout<<"---------------------"<<"\n"<<"\n";
 
     int j=0;
     string finalResults[3];
@@ -315,7 +295,6 @@ string addSubMul(string eq){
 }
 
 string exp(string x, int n){
-    // x=cleanStringBigInt(x);
     if(n==0) return "1";
     else if(n==1) return x;
 
@@ -342,7 +321,6 @@ string bigGcd(string a, string b){
 }
 
 string fact(string n){
-    // n=cleanStringBigInt(n);
     if(n=="0" || n=="1") return "1";
     string k="1";
     string ans="1";
