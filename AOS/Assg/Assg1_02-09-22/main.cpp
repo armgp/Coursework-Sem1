@@ -21,6 +21,10 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+/**functions**/
+void refreshExplorerScreen();
+void initWindowSize();
+
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define LOWTOUP(k) ((k) & 0xdf)
@@ -40,8 +44,8 @@ struct explorerConfig{
 }exCfg;
 
 struct currDirectoryDetails{
-    std::string currDirectory="current dir";
-    std::vector<int> minLengthsPerColumn;
+    std::string currDirectory=getpwuid(getuid())->pw_name;
+    std::stack<std::string> dirHistory;
 }currDirDet;
 
 struct onScreenDirectories{
@@ -56,6 +60,14 @@ struct onScreenDirectories{
 std::string appendBuffer="";
 
 /** terminal **/
+void handleWindowSizeChange(){
+    int prevCx=exCfg.explorerColumns;
+    int prevCy=exCfg.explorerRows;
+    initWindowSize();
+    int currCx=exCfg.explorerColumns;
+    int currCy=exCfg.explorerRows;
+    if(currCx!=prevCx || currCy!=prevCy) refreshExplorerScreen();
+}
 void die(const char* s){
     //screen cleared and cursor repositioned
     //we can also see the error after clearing of the screen
@@ -111,6 +123,7 @@ char readKey(){
 
     //read one byte from the standard input to the variable c
     while((n=read(STDIN_FILENO, &c, 1)) != 1){
+        handleWindowSizeChange();
         if(n==-1 && errno != EAGAIN) die("read"); 
     }
 
@@ -222,6 +235,9 @@ void initExplorer(){
     if(getWindowSize(exCfg.explorerRows, exCfg.explorerColumns)==-1) die("getWindowSize");
 }
 
+void initWindowSize(){
+    if(getWindowSize(exCfg.explorerRows, exCfg.explorerColumns)==-1) die("getWindowSize");
+}
 /**util**/
 std::string formatBytes(double val){
     double kb = 1024;
@@ -367,7 +383,7 @@ void processKeyPress(){
         exit(0);
     }
 
-    else if(c==HOME){
+    else if(c==HOME || c== 'h' || c== 'H'){
         //to change the colors back to default 
         write(STDOUT_FILENO, "\x1b[0m", 4);
         //to clear screen when exiting
