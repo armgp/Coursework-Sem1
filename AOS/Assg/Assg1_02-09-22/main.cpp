@@ -46,6 +46,7 @@ struct explorerConfig{
     int explorerColumns;
     int expMode=0;
     std::string command="";
+    std::vector<std::string> commandHistory;
     struct termios origTermios;
 }exCfg;
 
@@ -165,23 +166,16 @@ char readKey(){
             }
         }
 
-
-
-        return '\x1b';
+        return '^';
     }
 
     return c;
 }
 
-std::string readCommand(){
-    int n;
-    char* buffer;
-    while((n=read(STDIN_FILENO, buffer, 65535))==0){
-        handleWindowSizeChange();
-        if(n==-1 && errno != EAGAIN) die("read"); 
-    }
-    std::string command(buffer);
-    return command;
+void executeCommand(){
+    std::string command = exCfg.command;
+    exCfg.command="";
+    exCfg.commandHistory.push_back(command);
 }
 
 //reposition cursor to x and y
@@ -480,7 +474,10 @@ void processKeyPress(){
                 exCfg.command+="\x1b[K";
             }
         } 
-        exCfg.command+=c;
+        if(c=='\r'){
+            executeCommand();
+        }
+        else exCfg.command+=c;
     }
   
 }
