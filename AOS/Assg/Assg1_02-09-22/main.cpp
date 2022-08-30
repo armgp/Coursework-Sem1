@@ -269,17 +269,17 @@ std::string formatBytes(double val){
 
 std::string getPermissions(mode_t permission){
    
-    std::string modVal="---------";
+    std::string modVal="----------";
     
-    modVal[0] = (permission & S_IRUSR) ? 'r' : '-';
-    modVal[1] = (permission & S_IWUSR) ? 'w' : '-';
-    modVal[2] = (permission & S_IXUSR) ? 'x' : '-';
-    modVal[3] = (permission & S_IRGRP) ? 'r' : '-';
-    modVal[4] = (permission & S_IWGRP) ? 'w' : '-';
-    modVal[5] = (permission & S_IXGRP) ? 'x' : '-';
-    modVal[6] = (permission & S_IROTH) ? 'r' : '-';
-    modVal[7] = (permission & S_IWOTH) ? 'w' : '-';
-    modVal[8] = (permission & S_IXOTH) ? 'x' : '-';
+    modVal[1] = (permission & S_IRUSR) ? 'r' : '-';
+    modVal[2] = (permission & S_IWUSR) ? 'w' : '-';
+    modVal[3] = (permission & S_IXUSR) ? 'x' : '-';
+    modVal[4] = (permission & S_IRGRP) ? 'r' : '-';
+    modVal[5] = (permission & S_IWGRP) ? 'w' : '-';
+    modVal[6] = (permission & S_IXGRP) ? 'x' : '-';
+    modVal[7] = (permission & S_IROTH) ? 'r' : '-';
+    modVal[8] = (permission & S_IWOTH) ? 'w' : '-';
+    modVal[9] = (permission & S_IXOTH) ? 'x' : '-';
     return modVal;     
 }
 
@@ -292,6 +292,7 @@ std::string getCurrDirectory() {
 
 int populateCurrDirectory(){
     osd.directories.clear();
+    if(osd.d=="") osd.d="/";
     DIR* dir = opendir(osd.d.c_str());
     if(dir==NULL) return 1;
     struct dirent* entity;
@@ -328,7 +329,10 @@ int populateCurrDirectory(){
         std::string permData = getPermissions(statBuff.st_mode);
         dirDetails.push_back(permData);
 
-        if(S_ISDIR(statBuff.st_mode)) dirDetails.push_back("1");
+        if(S_ISDIR(statBuff.st_mode)) {
+            dirDetails.back()[0]='d';
+            dirDetails.push_back("1");
+        }
         else dirDetails.push_back("0");
 
         osd.directories.push_back(dirDetails);
@@ -465,8 +469,9 @@ void drawExplorerRows(){
     int n = exCfg.explorerRows;
     int m = osd.directories.size();
     int eCols=exCfg.explorerColumns;
-    int dCols=6;
+    int dCols=7;
     int maxOccupancy = eCols/dCols;
+    // std::vector<std::string> columnHeadings = {"FILE_NAME", "FNAME", "FILE_SIZE", "FSIZE", "USER", "U", "GROUP", "G", "LAST_MOD", "LMOD", "PERMISSIONS", "PERM"};
     std::string draw;
     for(int i=0; i<=n; i++){
         if(i==n-1){
@@ -475,39 +480,43 @@ void drawExplorerRows(){
         }else if(i==0){
             draw+="\x1b[K\x1b[1G";
             moveCursor(0,0,5,0,draw);
-            draw+="FILE_NAME";
+            draw+="\033[34;4;3mF_NAME\033[0m";
 
             draw+="\x1b[1G";
             moveCursor(0,0,maxOccupancy+5,0,draw);
-            draw+="FILE_SIZE";
+            draw+="\033[34;4;3mF_SIZE\033[0m";
 
             draw+="\x1b[1G";
             moveCursor(0,0,2*maxOccupancy+5,0,draw);
-            draw+="USER";
+            draw+="\033[34;4;3mUSR\033[0m";
 
             draw+="\x1b[1G";
             moveCursor(0,0,3*maxOccupancy+5,0,draw);
-            draw+="GROUP";
+            draw+="\033[34;4;3mGRP\033[0m";
 
             draw+="\x1b[1G";
             moveCursor(0,0,4*maxOccupancy+5,0,draw);
-            draw+="LAST_MOD";
+            draw+="\033[34;4;3mLST_MOD\033[0m";
 
             draw+="\x1b[1G";
             moveCursor(0,0,5*maxOccupancy+5,0,draw);
-            draw+="PERMISSIONS";
+            draw+="\033[34;4;3mPERM\033[0m";
         }else if(i==n-2) {
-            draw+="\x1b[K Normal Mode: ";
-            draw+=osd.d;
+            draw+="\x1b[K\033[40;1;7m Normal Mode: ";
+            draw+=osd.d.substr(0, exCfg.explorerColumns-20);
+            if(exCfg.explorerColumns-20<osd.d.size()) draw+="..";
+            draw+="\033[0m";
         }else draw+="\x1b[K";
 
         
-        if(i>0 && (i-1+osd.startInd)<m && i<n-3){
+        if(i>0 && (i-1+osd.startInd)<m && i<n-2){
             std::vector<std::string> dirDetails = osd.directories[i-1+osd.startInd];
             
             moveCursor(0,0,5,0,draw);
+            if(dirDetails[5][0]=='d') draw+="\033[32;3;1m";
             if(dirDetails[0].size()<maxOccupancy) draw+=dirDetails[0];
             else draw+=dirDetails[0].substr(0, maxOccupancy-3)+"..";
+            if(dirDetails[5][0]=='d') draw+="\033[0m";
 
             draw+="\x1b[1G";
             moveCursor(0,0,maxOccupancy+5,0,draw);
@@ -555,7 +564,8 @@ void refreshExplorerScreen(){
 
     //reposition cursor. The default is \x1b[1;1H == \x1b[H, so only need to write 3 bytes
     //row and column starts from 1 and not 0.
-    appendBuffer+="\x1b[H\x1b[1m";
+    appendBuffer+="\x1b[3J\x1b[H";
+    
     // write(STDOUT_FILENO, "\x1b[H", 3);
 
     drawExplorerRows();
