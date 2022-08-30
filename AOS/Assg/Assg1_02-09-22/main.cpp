@@ -25,6 +25,8 @@
 void refreshExplorerScreen();
 void initWindowSize();
 void processKeyPress();
+void drawNormalMode();
+void drawCommandMode();
 std::string getCurrDirectory();
 
 /** define **/
@@ -42,6 +44,8 @@ struct explorerConfig{
     int cx, cy;
     int explorerRows;
     int explorerColumns;
+    int expMode=0;
+    std::string command="";
     struct termios origTermios;
 }exCfg;
 
@@ -167,6 +171,17 @@ char readKey(){
     }
 
     return c;
+}
+
+std::string readCommand(){
+    int n;
+    char* buffer;
+    while((n=read(STDIN_FILENO, buffer, 65535))==0){
+        handleWindowSizeChange();
+        if(n==-1 && errno != EAGAIN) die("read"); 
+    }
+    std::string command(buffer);
+    return command;
 }
 
 //reposition cursor to x and y
@@ -359,13 +374,13 @@ void removeLastDir(std::string& d){
 
 /** input **/
 void processKeyPress(){
+    
     char c = readKey();
-
     //IF CTRL+q exit
     //here since the 5th bit is also discarded 
     //it doesnt matter if its lowercase/uppercase q.
     //5th bit set to 1 is lowercase
-    if(c=='w' && exCfg.cy>=1){
+    if(c=='w' && exCfg.cy>=1 && exCfg.expMode==0){
         if(exCfg.cy==1 && osd.startInd>0){
             if(osd.currPos>0){
                 osd.startInd--;
@@ -377,8 +392,7 @@ void processKeyPress(){
             osd.currPos--;
         }
     }
-
-    else if(c=='s' && exCfg.cy<osd.directories.size()-1 && exCfg.cy<=exCfg.explorerRows-4){
+    else if(c=='s' && exCfg.cy<osd.directories.size()-1 && exCfg.cy<=exCfg.explorerRows-4 && exCfg.expMode==0){
         if(exCfg.cy==exCfg.explorerRows-4){
             if(osd.currPos < osd.directories.size()-1){
                 osd.startInd++;
@@ -390,8 +404,7 @@ void processKeyPress(){
             osd.currPos++;
         }
     }
-
-    else if(c=='d'){
+    else if(c=='d' && exCfg.expMode==0){
         if(!currDirDet.fwdHistory.empty()){
             currDirDet.bwdHistory.push(osd.d);
             osd.d=currDirDet.fwdHistory.top();
@@ -399,8 +412,7 @@ void processKeyPress(){
             populateCurrDirectory();
         }
     }
-
-    else if(c=='a'){
+    else if(c=='a' && exCfg.expMode==0){
         if(!currDirDet.bwdHistory.empty()){
             currDirDet.fwdHistory.push(osd.d);
             osd.d=currDirDet.bwdHistory.top();
@@ -408,28 +420,24 @@ void processKeyPress(){
             populateCurrDirectory();
         }
     }
-
-    else if(c==DELETE){
+    else if(c==DELETE && exCfg.expMode==0){
         //to change the colors back to default 
         write(STDOUT_FILENO, "\x1b[0m", 4);
         //to clear screen when exiting
         write(STDOUT_FILENO, "\x1b[2J", 4);
         exit(0);
     }
-
-    else if(c==HOME || c== 'h' || c== 'H'){
+    else if((c==HOME || c== 'h' || c== 'H') && exCfg.expMode==0){
         currDirDet.bwdHistory.push(osd.d);
         osd.d=currDirDet.user;
         populateCurrDirectory();
     }
-
-    else if(c==BACKSPACE){
+    else if(c==BACKSPACE && exCfg.expMode==0){
         currDirDet.bwdHistory.push(osd.d);
         removeLastDir(osd.d);
         populateCurrDirectory();
     }
-
-    else if(c=='\r'){
+    else if(c=='\r' && exCfg.expMode==0){
         if(osd.directories[osd.currPos][6]=="1" && osd.directories[osd.currPos][0]!="."){
             currDirDet.bwdHistory.push(osd.d);
             if(osd.directories[osd.currPos][0]=="..") removeLastDir(osd.d);
@@ -451,21 +459,34 @@ void processKeyPress(){
             }
             osd.d=temp;
         }
-        
     }
-
-    c=LOWTOUP(c);
-    if(c=='Q'){
+    else if(c==':' && exCfg.expMode==0){
+        exCfg.expMode=1;
+    }else if(c=='\x1b' && exCfg.expMode==1){
+        exCfg.expMode=0;
+    }
+    else if(c=='Q' || c=='q'){
         //to change the colors back to default 
         write(STDOUT_FILENO, "\x1b[0m", 4);
         //to clear screen when exiting
         write(STDOUT_FILENO, "\x1b[2J", 4);
         exit(0);
-    } 
+    }else if(exCfg.expMode==1){
+        if(c==BACKSPACE){
+            int y,x;
+            getCursorPosition(y,x);
+            if(y==exCfg.explorerRows-1 && x>17){
+                moveCursor(0,0,0,1, exCfg.command);
+                exCfg.command+="\x1b[K";
+            }
+        } 
+        exCfg.command+=c;
+    }
+  
 }
 
 /** output **/
-void drawExplorerRows(){
+void drawNormalMode(){
     int n = exCfg.explorerRows;
     int m = osd.directories.size();
     int eCols=exCfg.explorerColumns;
@@ -480,23 +501,23 @@ void drawExplorerRows(){
         }else if(i==0){
             draw+="\x1b[K\x1b[1G";
             moveCursor(0,0,5,0,draw);
-            draw+="\033[34;4;3mF_NAME\033[0m";
+            draw+="\033[34;4;3mF_NAME";
 
             draw+="\x1b[1G";
             moveCursor(0,0,maxOccupancy+5,0,draw);
-            draw+="\033[34;4;3mF_SIZE\033[0m";
+            draw+="\033[34;4;3mF_SIZE";
 
             draw+="\x1b[1G";
             moveCursor(0,0,2*maxOccupancy+5,0,draw);
-            draw+="\033[34;4;3mUSR\033[0m";
+            draw+="\033[34;4;3mUSR";
 
             draw+="\x1b[1G";
             moveCursor(0,0,3*maxOccupancy+5,0,draw);
-            draw+="\033[34;4;3mGRP\033[0m";
+            draw+="\033[34;4;3mGRP";
 
             draw+="\x1b[1G";
             moveCursor(0,0,4*maxOccupancy+5,0,draw);
-            draw+="\033[34;4;3mLST_MOD\033[0m";
+            draw+="\033[34;4;3mLST_MOD";
 
             draw+="\x1b[1G";
             moveCursor(0,0,5*maxOccupancy+5,0,draw);
@@ -547,29 +568,6 @@ void drawExplorerRows(){
         draw+="\r\n";
     }
     appendBuffer+=draw;
-
-}
-
-void refreshExplorerScreen(){
-    //hide cursor while drawing
-    appendBuffer+="\x1b[?25l";
-
-    /* DELETED-(We dont want to clear the entire screen each time we refresh)
-    // \x1b is the escape charachter(byte)=27 which is always in front of escape sequences
-    // escape seq always starts with esc char and [
-    // after [ comes the argument which is 2(clear the entire screen) and command which is J(Erase In Display)
-    //4bytes
-    appendBuffer+="\x1b[2J";
-    */
-
-    //reposition cursor. The default is \x1b[1;1H == \x1b[H, so only need to write 3 bytes
-    //row and column starts from 1 and not 0.
-    appendBuffer+="\x1b[3J\x1b[H";
-    
-    // write(STDOUT_FILENO, "\x1b[H", 3);
-
-    drawExplorerRows();
-
     //+1 because indexing starts from 1 in the screen
     std::string cy=std::to_string(exCfg.cy+1);
     std::string cx=std::to_string(exCfg.cx+1);
@@ -594,6 +592,44 @@ void refreshExplorerScreen(){
     getCursorPosition(y, x);
     int index = y-2;
     appendBuffer+="\x1b[0;0;60b";
+}
+
+void drawCommandMode(){
+    std::string draw;
+    repositionCursor(1, exCfg.explorerRows-2, draw);
+    draw+="\x1b[K\033[40;1;7m Command Mode:\033[0m$";
+    draw+=exCfg.command;
+    appendBuffer+=draw;
+}
+
+void drawExplorerRows(){
+    if(exCfg.expMode==0){
+        drawNormalMode();
+    }else{
+        drawCommandMode();
+    }
+}
+
+void refreshExplorerScreen(){
+    //hide cursor while drawing
+    appendBuffer+="\x1b[?25l";
+
+    /* DELETED-(We dont want to clear the entire screen each time we refresh)
+    // \x1b is the escape charachter(byte)=27 which is always in front of escape sequences
+    // escape seq always starts with esc char and [
+    // after [ comes the argument which is 2(clear the entire screen) and command which is J(Erase In Display)
+    //4bytes
+    appendBuffer+="\x1b[2J";
+    */
+
+    //reposition cursor. The default is \x1b[1;1H == \x1b[H, so only need to write 3 bytes
+    //row and column starts from 1 and not 0.
+    appendBuffer+="\x1b[3J\x1b[H";
+    
+    // write(STDOUT_FILENO, "\x1b[H", 3);
+
+    drawExplorerRows();
+    
     write(STDOUT_FILENO, appendBuffer.c_str(), appendBuffer.size());
     appendBuffer="";
     // std::cout<<x<<" "<<y<<"\n";
