@@ -394,30 +394,33 @@ void createDirectory(std::string name){
 }
 
 int copyfile(std::string sourceFile, std::string destinationDirectory){
-    std::string line;
+    // std::string line;
     struct stat st;
-    std::ifstream ifile{
-        // "/home/user/Documents/Coursework/AOS/Assg/AOS_Assignment_1.pdf"
-        sourceFile
-    }; 
-    std::ofstream ofile{ 
-        // "/home/user/Documents/Coursework/AOS/AOS_Assignment_1.pdf"
-        destinationDirectory 
-    };
-    if (ifile && ofile) {
-        while (getline(ifile, line)) {
-            ofile << line << "\n";
-        }
-    }
-    else {
-        return 1;
-    }
+    // std::ifstream ifile{
+    //     // "/home/user/Documents/Coursework/AOS/Assg/AOS_Assignment_1.pdf"
+    //     sourceFile
+    // }; 
+    // std::ofstream ofile{ 
+    //     // "/home/user/Documents/Coursework/AOS/AOS_Assignment_1.pdf"
+    //     destinationDirectory 
+    // };
+    // if (ifile && ofile) {
+    //     while (getline(ifile, line)) {
+    //         ofile << line << "\n";
+    //     }
+    // }
+    // else {
+    //     return 1;
+    // }
+
+    std::ifstream  src(sourceFile, std::ios::binary);
+    std::ofstream  dst(destinationDirectory,   std::ios::binary);
 
     stat(sourceFile.c_str(), &st);    
     mode_t perm = st.st_mode;
     chmod(destinationDirectory.c_str(), perm); 
-    ifile.close();
-    ofile.close();
+    // ifile.close();
+    // ofile.close();
     return 0;
 }
 
@@ -628,17 +631,18 @@ void executeQuit(){
     exit(0);
 }
 
- std::vector<std::string> processCommand(std::string command){
+ std::vector<std::vector<std::string>> processCommand(std::string command){
+    std::vector<std::vector<std::string>> allCommands;
     int n = command.size();
     std::vector<std::string> components;
     int start=0;
     for(int i=0; i<n; i++){
-        if(command[start]==' ') return {"invalid command"};
+        if(command[start]==' ') return {{"invalid command"}};
         if(command[i]=='~' && i+1<n-1 && command[i+1]=='/'){
-            components.push_back(command.substr(i+2));
-            break;
+            start=i+2;
+            i+=2;
         }
-        if(command[i]==' ' || i==n-1){
+        else if(command[i]==' ' || i==n-1){
             int count;
             if(i==n-1) count = n-start;
             else count = i-start;
@@ -646,7 +650,22 @@ void executeQuit(){
             start=i+1;
         }
     }
-    return components;
+
+    int m = components.size();
+    std::vector<std::string> comm = {components[0]};
+    for(int i=1; i<m; i++){
+        if(components[i]=="copy" || components[i]=="move" || components[i]=="rename" || 
+        components[i]=="create_file" || components[i]=="create_dir" || components[i]=="delete_file" || 
+        components[i]=="delete_dir" || components[i]=="goto" || components[i]=="search"){
+            allCommands.push_back(comm);
+            comm={components[i]};
+        }else{
+            comm.push_back(components[i]);
+            if(components[i]=="quit") return allCommands;
+        }
+    }
+    allCommands.push_back(comm);
+    return allCommands;
 }
 
 void executeCommand(){
@@ -654,51 +673,52 @@ void executeCommand(){
 
     exCfg.command="";
     exCfg.execcommand="";
+    if(command=="") return;
+    std::vector<std::vector<std::string>> allCommands = processCommand(command);
 
-    if(command=="quit") executeQuit();
-    else {
-        std::vector<std::string> components = processCommand(command);
-        int n=components.size();
-        if(components[0]=="copy" || components[0]=="move"){
-            std::vector<std::string> sourcefiles;
-            std::string destinationDirectory;
+    for(std::vector<std::string> components : allCommands){
+        if(components[0]=="quit") executeQuit();
+        else {
+            int n=components.size();
+            if(components[0]=="copy" || components[0]=="move"){
+                std::vector<std::string> sourcefiles;
+                std::string destinationDirectory;
 
-            for(int i=1; i<n-1; i++){
-                std::string sourceFile=components[i];
-                sourceFile=osd.d+"/"+components[i];
-                sourcefiles.push_back(sourceFile);
-            }
+                for(int i=1; i<n-1; i++){
+                    std::string sourceFile=components[i];
+                    sourceFile=osd.d+"/"+components[i];
+                    sourcefiles.push_back(sourceFile);
+                }
 
-            destinationDirectory=components[n-1];
-            destinationDirectory=osd.d+"/"+destinationDirectory;
+                destinationDirectory=components[n-1];
+                destinationDirectory=osd.d+"/"+destinationDirectory;
 
-            if(components[0]=="copy" ){
-                if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
+                if(components[0]=="copy" ){
+                    if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
+                    else osd.commandStatus="\x1b[Kexecuted!";
+                }else if(components[0]=="move" ){
+                    if(movefiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
+                    else osd.commandStatus="\x1b[Kexecuted!";
+                }
+            }else if(components[0]=="rename"){
+                std::string sourceFile=osd.d+"/"+components[1];
+                std::string newName;
+                for(int i=2; i<n; i++){
+                    newName+=components[i];
+                    if(i!=n-1)newName+=" ";
+                }
+                if(renameFile(sourceFile, newName)!=0) osd.commandStatus="\x1b[Kfailed!";
                 else osd.commandStatus="\x1b[Kexecuted!";
-            }else if(components[0]=="move" ){
-                if(movefiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
-                else osd.commandStatus="\x1b[Kexecuted!";
-            }
-           
-            
-        }else if(components[0]=="rename"){
-            std::string sourceFile=osd.d+"/"+components[1];
-            std::string newName;
-            for(int i=2; i<n; i++){
-                newName+=components[i];
-                if(i!=n-1)newName+=" ";
-            }
-            if(renameFile(sourceFile, newName)!=0) osd.commandStatus="\x1b[Kfailed!";
-            else osd.commandStatus="\x1b[Kexecuted!";
-        }else if(components[0]=="create_file"){
-            createfile(components[1], components[2]);
-        }else if(components[0]=="create_dir"){
+            }else if(components[0]=="create_file"){
+                createfile(components[1], components[2]);
+            }else if(components[0]=="create_dir"){
 
-        }else if(components[0]=="goto"){
-            gotoFunction(components[1]);
-        }
-        else{
-            osd.commandStatus="\x1b[KInvalid Command!";
+            }else if(components[0]=="goto"){
+                gotoFunction(components[1]);
+            }
+            else{
+                osd.commandStatus="\x1b[KInvalid Command!";
+            }
         }
     }
 
