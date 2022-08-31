@@ -294,7 +294,7 @@ std::string getPermissions(mode_t permission){
 
 std::string getCurrDirectory() {
    char buff[FILENAME_MAX]; 
-   getcwd( buff, FILENAME_MAX );
+   getcwd(buff, FILENAME_MAX);
    std::string currDir(buff);
    return currDir;
 }
@@ -385,29 +385,6 @@ std::string getSourceDirectory(std::string sourcefile){
     return sourcefile.substr(0,i+1);
 }
 
-int createfile(std::string name, mode_t perms){
-    int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
-    if (fd >= 0) {
-        std::cout<<"done"<<"\n";
-        return fd;
-    } else {
-        std::cout<<"error perms"<<"\n";
-    }
-    return -1;
-}
-
-int createfile(std::string name){
-    mode_t perms = S_IRWXU; 
-    int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
-    if (fd >= 0) {
-        std::cout<<"done"<<"\n";
-        return fd;
-    } else {
-        std::cout<<"error now"<<"\n";
-    }
-    return -1;
-}
-
 void createDirectory(std::string name){
     const int d = mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (d==-1){
@@ -463,6 +440,33 @@ int movefiles(std::vector<std::string> sourcefiles, std::string destinationDirec
     for(std::string file : sourcefiles){
         remove(file.c_str());
     }
+}
+
+int createfile(std::string name, mode_t perms){
+    int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
+    if (fd >= 0) {
+        std::cout<<"done"<<"\n";
+        return fd;
+    } else {
+        std::cout<<"error perms"<<"\n";
+    }
+    return -1;
+}
+
+int createfile(std::string name, std::string destinationDirectory){
+    mode_t perms = S_IRWXU; 
+    int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
+    if (fd < 0) {
+        osd.commandStatus="\x1b[Kfailed!";
+        return 1;
+    } 
+
+    std::string sourceFile=getCurrDirectory()+"/"+name;
+    destinationDirectory=osd.d+"/"+destinationDirectory;
+
+    copyfiles({sourceFile}, destinationDirectory);
+    remove(sourceFile.c_str());
+    osd.commandStatus=sourceFile+" - "+destinationDirectory;
 }
 
 /** input **/
@@ -605,6 +609,10 @@ void executeQuit(){
     int start=0;
     for(int i=0; i<n; i++){
         if(command[start]==' ') return {"invalid command"};
+        if(command[i]=='~' && i+1<n-1 && command[i+1]=='/'){
+            components.push_back(command.substr(i+2));
+            break;
+        }
         if(command[i]==' ' || i==n-1){
             int count;
             if(i==n-1) count = n-start;
@@ -655,9 +663,14 @@ void executeCommand(){
                 newName+=components[i];
                 if(i!=n-1)newName+=" ";
             }
-            if(renameFile(sourceFile, newName)!=0) "\x1b[Kfailed!";
+            if(renameFile(sourceFile, newName)!=0) osd.commandStatus="\x1b[Kfailed!";
             else osd.commandStatus="\x1b[Kexecuted!";
-        }else{
+        }else if(components[0]=="create_file"){
+            createfile(components[1], components[2]);
+        }else if(components[0]=="create_dir"){
+
+        }
+        else{
             osd.commandStatus="\x1b[KInvalid Command!";
         }
     }
