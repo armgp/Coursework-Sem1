@@ -126,7 +126,7 @@ void enableRawMode(){
     raw.c_cflag |= (CS8);
 
     raw.c_cc[VMIN]=0;
-    raw.c_cc[VTIME]=1;
+    raw.c_cc[VTIME]=2;
 
     if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &raw)==-1) die("tcsetattr");
 }
@@ -444,26 +444,24 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     return 0;
 }
 
-void renameFile(std::string sourceFile, std::string newName){
-    copyfile(sourceFile, getSourceDirectory(sourceFile)+newName);
-    remove(sourceFile.c_str());
+int renameFile(std::string sourceFile, std::string newName){
+    if(copyfile(sourceFile, getSourceDirectory(sourceFile)+newName)!=0) return 1;
+    if(remove(sourceFile.c_str())!=0) return 1;
 }
 
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
     for(std::string sourcefile : sourcefiles){
         std::string sourceName=getSourceName(sourcefile);
-        std::cout<<sourcefile<<" -to- "<<destinationDirectory+"/"+sourceName<<"\n";
-        if(copyfile(sourcefile, destinationDirectory+"/"+sourceName)==1) return 1;
+        // std::cout<<sourcefile<<" -to- "<<destinationDirectory+"/"+sourceName<<"\n";
+        if(copyfile(sourcefile, destinationDirectory+"/"+sourceName)!=0) return 1;
     }
     return 0;
 }
 
-void movefiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
-    for(std::string sourcefile : sourcefiles){
-        std::string sourceName=getSourceName(sourcefile);
-        std::cout<<sourcefile<<" -to- "<<destinationDirectory+"/"+sourceName<<"\n";
-        copyfile(sourcefile, destinationDirectory+"/"+sourceName);
-        remove(sourcefile.c_str());
+int movefiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
+    copyfiles(sourcefiles, destinationDirectory);
+    for(std::string file : sourcefiles){
+        remove(file.c_str());
     }
 }
 
@@ -619,9 +617,6 @@ void executeQuit(){
 }
 
 void executeCommand(){
-
-    // "\x1b[1D\x1b[K"
-
     std::string command = exCfg.execcommand;
 
     exCfg.command="";
@@ -631,31 +626,43 @@ void executeCommand(){
     else {
         std::vector<std::string> components = processCommand(command);
         int n=components.size();
-        if(components[0]=="copy"){
-            // std::vector<std::string> sourcefiles;
-            // std::string destinationDirectory;
+        if(components[0]=="copy" || components[0]=="move"){
+            std::vector<std::string> sourcefiles;
+            std::string destinationDirectory;
 
-            // for(int i=1; i<n-1; i++){
-            //     std::string sourceFile=components[i];
-            //     sourceFile=osd.d+"/"+components[i];
-            //     sourcefiles.push_back(sourceFile);
-            // }
+            for(int i=1; i<n-1; i++){
+                std::string sourceFile=components[i];
+                sourceFile=osd.d+"/"+components[i];
+                sourcefiles.push_back(sourceFile);
+            }
 
-            // destinationDirectory=components[n-1];
-            // destinationDirectory=osd.d+destinationDirectory.substr(1);
+            destinationDirectory=components[n-1];
+            destinationDirectory=osd.d+"/"+destinationDirectory;
 
-            // if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="failed!";
-            // else osd.commandStatus="executed!";
-            osd.commandStatus="\x1b[Kexecuted";
+            if(components[0]=="copy" ){
+                if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
+                else osd.commandStatus="\x1b[Kexecuted!";
+            }else if(components[0]=="move" ){
+                if(movefiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
+                else osd.commandStatus="\x1b[Kexecuted!";
+            }
+           
             
-        }else if(components[0]=="move"){
-
         }else if(components[0]=="rename"){
-
+            std::string sourceFile=osd.d+"/"+components[1];
+            std::string newName;
+            for(int i=2; i<n; i++){
+                newName+=components[i];
+                if(i!=n-1)newName+=" ";
+            }
+            if(renameFile(sourceFile, newName)!=0) "\x1b[Kfailed!";
+            else osd.commandStatus="\x1b[Kexecuted!";
         }else{
             osd.commandStatus="\x1b[KInvalid Command!";
         }
     }
+
+    populateCurrDirectory();
 }
 
 /** output **/
@@ -707,10 +714,11 @@ void drawNormalMode(){
             std::vector<std::string> dirDetails = osd.directories[i-1+osd.startInd];
             
             moveCursor(0,0,5,0,draw);
-            if(dirDetails[5][0]=='d') draw+="\033[32;3;1m";
+            if(dirDetails[5][0]=='d') draw+="\033[34;3;1m";
+            else if(dirDetails[5][3]=='x') draw+="\033[32;3;1m";
             if(dirDetails[0].size()<maxOccupancy) draw+=dirDetails[0];
             else draw+=dirDetails[0].substr(0, maxOccupancy-3)+"..";
-            if(dirDetails[5][0]=='d') draw+="\033[0m";
+            if(dirDetails[5][0]=='d' || dirDetails[5][3]=='x') draw+="\033[0m";
 
             draw+="\x1b[1G";
             moveCursor(0,0,maxOccupancy+5,0,draw);
@@ -768,7 +776,109 @@ void drawNormalMode(){
 }
 
 void drawCommandMode(){
+    //NORMAL SCREEN
+    int n = exCfg.explorerRows;
+    int m = osd.directories.size();
+    int eCols=exCfg.explorerColumns;
+    int dCols=7;
+    int maxOccupancy = eCols/dCols;
+    // std::vector<std::string> columnHeadings = {"FILE_NAME", "FNAME", "FILE_SIZE", "FSIZE", "USER", "U", "GROUP", "G", "LAST_MOD", "LMOD", "PERMISSIONS", "PERM"};
     std::string draw;
+    for(int i=0; i<=n; i++){
+        if(i==n-1){
+            draw+="\x1b[K\x1b[H";
+            break;
+        }else if(i==0){
+            draw+="\x1b[K\x1b[1G";
+            moveCursor(0,0,5,0,draw);
+            draw+="\033[34;4;3mF_NAME";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,maxOccupancy+5,0,draw);
+            draw+="\033[34;4;3mF_SIZE";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,2*maxOccupancy+5,0,draw);
+            draw+="\033[34;4;3mUSR";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,3*maxOccupancy+5,0,draw);
+            draw+="\033[34;4;3mGRP";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,4*maxOccupancy+5,0,draw);
+            draw+="\033[34;4;3mLST_MOD";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,5*maxOccupancy+5,0,draw);
+            draw+="\033[34;4;3mPERM\033[0m";
+        }else if(i==n-2) {
+        }else draw+="\x1b[K";
+
+        
+        if(i>0 && (i-1+osd.startInd)<m && i<n-2){
+            std::vector<std::string> dirDetails = osd.directories[i-1+osd.startInd];
+            
+            moveCursor(0,0,5,0,draw);
+            if(dirDetails[5][0]=='d') draw+="\033[34;3;1m";
+            else if(dirDetails[5][3]=='x') draw+="\033[32;3;1m";
+            if(dirDetails[0].size()<maxOccupancy) draw+=dirDetails[0];
+            else draw+=dirDetails[0].substr(0, maxOccupancy-3)+"..";
+            if(dirDetails[5][0]=='d' || dirDetails[5][3]=='x') draw+="\033[0m";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,maxOccupancy+5,0,draw);
+            if(dirDetails[1].size()<maxOccupancy) draw+=dirDetails[1];
+            else draw+=dirDetails[1].substr(0, maxOccupancy-3)+"..";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,2*maxOccupancy+5,0,draw);
+            if(dirDetails[2].size()<maxOccupancy) draw+=dirDetails[2];
+            else draw+=dirDetails[2].substr(0, maxOccupancy-3)+"..";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,3*maxOccupancy+5,0,draw);
+            if(dirDetails[3].size()<maxOccupancy) draw+=dirDetails[3];
+            else draw+=dirDetails[3].substr(0, maxOccupancy-3)+"..";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,4*maxOccupancy+5,0,draw);
+            if(dirDetails[4].size()<maxOccupancy) draw+=dirDetails[4];
+            else draw+=dirDetails[4].substr(0, maxOccupancy-3)+"..";
+
+            draw+="\x1b[1G";
+            moveCursor(0,0,5*maxOccupancy+5,0,draw);
+            if(dirDetails[5].size()<maxOccupancy) draw+=dirDetails[5];
+            else draw+=dirDetails[5].substr(0, maxOccupancy-3)+"..";
+        }
+
+        draw+="\r\n";
+    }
+    appendBuffer+=draw;
+    //+1 because indexing starts from 1 in the screen
+    std::string cy=std::to_string(exCfg.cy+1);
+    std::string cx=std::to_string(exCfg.cx+1);
+
+    // appendBuffer+=cx
+
+    // add "\x1b[cy;cxH" to appendBuffer
+    std::string positionCursor ="\x1b[";
+    positionCursor+=cy;
+    positionCursor+=";";
+    positionCursor+=cx;
+    positionCursor+="H\r\n";
+    appendBuffer+=positionCursor;
+
+    //show cursor after drawing
+    appendBuffer+="\x1b[?25h";
+
+    int x, y;
+    getCursorPosition(y, x);
+    int index = y-2;
+    appendBuffer+="\x1b[0;0;60b";
+
+
+    //COMMAND TAB
     repositionCursor(1, exCfg.explorerRows-1, draw);
     draw+=osd.commandStatus;
     repositionCursor(1, exCfg.explorerRows-2, draw);
