@@ -454,7 +454,7 @@ int createfile(std::string name, mode_t perms){
 }
 
 int createfile(std::string name, std::string destinationDirectory){
-    mode_t perms = S_IRWXU; 
+    mode_t perms = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; 
     int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
     if (fd < 0) {
         osd.commandStatus="\x1b[Kfailed!";
@@ -466,7 +466,38 @@ int createfile(std::string name, std::string destinationDirectory){
 
     copyfiles({sourceFile}, destinationDirectory);
     remove(sourceFile.c_str());
-    osd.commandStatus=sourceFile+" - "+destinationDirectory;
+    osd.commandStatus="created";
+}
+
+std::vector<std::string> getComponentsOfDir(std::string destinationDirectory){
+    std::vector<std::string> destinationComponents;
+    int n = destinationDirectory.size();
+    int start=0;
+    for(int i=0; i<=n; i++){
+        if(i==n || destinationDirectory[i]=='/'){
+            destinationComponents.push_back(destinationDirectory.substr(start, i-start));
+            start=i+1;
+        }
+    }
+    return destinationComponents;
+}
+
+void gotoFunction(std::string destinationDirectory){
+    std::string currdir = osd.d;
+    std::vector<std::string> currDirComponents = getComponentsOfDir(currdir);
+    std::vector<std::string> destinationComponents = getComponentsOfDir(destinationDirectory);
+    for(std::string comp : destinationComponents){
+        if(comp=="..") {
+            if(currDirComponents.size()>0) currDirComponents.pop_back();
+        }
+        else currDirComponents.push_back(comp);
+    }
+    currdir="";
+    for(std::string comp : currDirComponents){
+        currdir+=comp+"/";
+    }
+    currdir.pop_back();
+    osd.d=currdir;
 }
 
 /** input **/
@@ -597,12 +628,6 @@ void executeQuit(){
     exit(0);
 }
 
-// Copy –
-// ‘$ copy <source_file(s)> <destination_directory>’
-// Move –
-// ‘$ move <source_file(s)> <destination_directory>’
-// Rename –
-// ‘$ rename <old_filename> <new_filename>’
  std::vector<std::string> processCommand(std::string command){
     int n = command.size();
     std::vector<std::string> components;
@@ -669,6 +694,8 @@ void executeCommand(){
             createfile(components[1], components[2]);
         }else if(components[0]=="create_dir"){
 
+        }else if(components[0]=="goto"){
+            gotoFunction(components[1]);
         }
         else{
             osd.commandStatus="\x1b[KInvalid Command!";
