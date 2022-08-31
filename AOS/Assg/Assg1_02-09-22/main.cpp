@@ -606,10 +606,14 @@ void processKeyPress(){
         if(c==BACKSPACE){
             int y,x;
             getCursorPosition(y,x);
-            if(y==exCfg.explorerRows-1 && x>18){
-                moveCursor(0,0,0,1, exCfg.command);
-                exCfg.command+="\x1b[K";
-                exCfg.execcommand.pop_back();
+            if((y==exCfg.explorerRows-1 && x>18) || y>exCfg.explorerRows-1){
+                if(y>exCfg.explorerRows-1 && x==1){
+                    moveCursor(1,0,exCfg.explorerColumns,0, exCfg.command);
+                }else{
+                    moveCursor(0,0,0,1, exCfg.command);
+                    exCfg.command+="\x1b[K";
+                    exCfg.execcommand.pop_back();
+                }
             }
         } 
         else if(c=='\r'){
