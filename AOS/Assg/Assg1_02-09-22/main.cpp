@@ -20,6 +20,9 @@
 #include <time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <fstream>
+#include <iostream>
 
 /**functions**/
 void refreshExplorerScreen();
@@ -27,7 +30,110 @@ void initWindowSize();
 void processKeyPress();
 void drawNormalMode();
 void drawCommandMode();
+void executeCommand();
 std::string getCurrDirectory();
+
+/**commands**/
+std::string getSourceName(std::string sourcefile){
+    int n = sourcefile.size();
+    int i=n-1;
+    for(; i>=0; i--){
+        if(sourcefile[i]=='/') break;
+    }
+    return sourcefile.substr(i+1);
+}
+
+std::string getSourceDirectory(std::string sourcefile){
+    int n = sourcefile.size();
+    int i=n-1;
+    for(; i>=0; i--){
+        if(sourcefile[i]=='/') break;
+    }
+    return sourcefile.substr(0,i+1);
+}
+
+int createfile(std::string name, mode_t perms){
+    int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
+    if (fd >= 0) {
+        std::cout<<"done"<<"\n";
+        return fd;
+    } else {
+        std::cout<<"error perms"<<"\n";
+    }
+    return -1;
+}
+
+int createfile(std::string name){
+    mode_t perms = S_IRWXU; 
+    int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
+    if (fd >= 0) {
+        std::cout<<"done"<<"\n";
+        return fd;
+    } else {
+        std::cout<<"error now"<<"\n";
+    }
+    return -1;
+}
+
+void createDirectory(std::string name){
+    const int d = mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (d==-1){
+        printf("Error creating directory!n");
+        exit(1);
+    }
+}
+
+void copyfile(std::string sourceFile, std::string destinationDirectory){
+    std::string line;
+    struct stat st;
+    std::ifstream ifile{
+        // "/home/user/Documents/Coursework/AOS/Assg/AOS_Assignment_1.pdf"
+        sourceFile
+    }; 
+    std::ofstream ofile{ 
+        // "/home/user/Documents/Coursework/AOS/AOS_Assignment_1.pdf"
+        destinationDirectory 
+    };
+    if (ifile && ofile) {
+  
+        while (getline(ifile, line)) {
+            ofile << line << "\n";
+        }
+        std::cout << "Copy Finished \n";
+    }
+    else {
+        printf("Cannot read File \n");
+    }
+
+    stat(sourceFile.c_str(), &st);    
+    mode_t perm = st.st_mode;
+    chmod(destinationDirectory.c_str(), perm); 
+    ifile.close();
+    ofile.close();
+}
+
+void renameFile(std::string sourceFile, std::string newName){
+    copyfile(sourceFile, getSourceDirectory(sourceFile)+newName);
+    remove(sourceFile.c_str());
+}
+
+void copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
+    for(std::string sourcefile : sourcefiles){
+        std::string sourceName=getSourceName(sourcefile);
+        std::cout<<sourcefile<<" -to- "<<destinationDirectory+"/"+sourceName<<"\n";
+        copyfile(sourcefile, destinationDirectory+"/"+sourceName);
+    }
+}
+
+void movefiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
+    for(std::string sourcefile : sourcefiles){
+        std::string sourceName=getSourceName(sourcefile);
+        std::cout<<sourcefile<<" -to- "<<destinationDirectory+"/"+sourceName<<"\n";
+        copyfile(sourcefile, destinationDirectory+"/"+sourceName);
+        remove(sourcefile.c_str());
+    }
+}
+
 
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
@@ -170,12 +276,6 @@ char readKey(){
     }
 
     return c;
-}
-
-void executeCommand(){
-    std::string command = exCfg.command;
-    exCfg.command="";
-    exCfg.commandHistory.push_back(command);
 }
 
 //reposition cursor to x and y
@@ -459,7 +559,7 @@ void processKeyPress(){
     }else if(c=='\x1b' && exCfg.expMode==1){
         exCfg.expMode=0;
     }
-    else if(c=='Q' || c=='q'){
+    else if((c=='Q' || c=='q') && exCfg.expMode==0){
         //to change the colors back to default 
         write(STDOUT_FILENO, "\x1b[0m", 4);
         //to clear screen when exiting
@@ -480,6 +580,46 @@ void processKeyPress(){
         else exCfg.command+=c;
     }
   
+}
+
+void executeQuit(){
+    //to change the colors back to default 
+    write(STDOUT_FILENO, "\x1b[0m", 4);
+    //to clear screen when exiting
+    write(STDOUT_FILENO, "\x1b[2J", 4);
+    exit(0);
+}
+
+// Copy –
+// ‘$ copy <source_file(s)> <destination_directory>’
+// Move –
+// ‘$ move <source_file(s)> <destination_directory>’
+// Rename –
+// ‘$ rename <old_filename> <new_filename>’
+ std::vector<std::string> processCommand(std::string command){
+    int n = command.size();
+    std::vector<std::string> components;
+    int start=0;
+    for(int i=0; i<n; i++){
+        if(command[start]==' ') return {"invalid command"};
+        if(command[i]==' ' || i==n-1){
+            int count;
+            if(i==n-1) count = n-start;
+            else count = i-start;
+            components.push_back(command.substr(start, count));
+            start=i+1;
+        }
+    }
+    return components;
+}
+
+void executeCommand(){
+    std::string command = exCfg.command;
+    exCfg.command="";
+    if(command=="quit") executeQuit();
+    else {
+        std::vector<std::string> components = processCommand(command);
+    }
 }
 
 /** output **/
@@ -594,7 +734,7 @@ void drawNormalMode(){
 void drawCommandMode(){
     std::string draw;
     repositionCursor(1, exCfg.explorerRows-2, draw);
-    draw+="\x1b[K\033[40;1;7m Command Mode:\033[0m$";
+    draw+="\x1b[K\033[40;1;7m Command Mode:\033[0m$ ";
     draw+=exCfg.command;
     appendBuffer+=draw;
 }
