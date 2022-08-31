@@ -50,7 +50,7 @@ struct explorerConfig{
     int explorerColumns;
     int expMode=0;
     std::string command="";
-    std::vector<std::string> commandHistory;
+    std::string execcommand="";
     struct termios origTermios;
 }exCfg;
 
@@ -573,12 +573,16 @@ void processKeyPress(){
             if(y==exCfg.explorerRows-1 && x>18){
                 moveCursor(0,0,0,1, exCfg.command);
                 exCfg.command+="\x1b[K";
+                exCfg.execcommand.pop_back();
             }
         } 
-        if(c=='\r'){
+        else if(c=='\r'){
             executeCommand();
         }
-        else exCfg.command+=c;
+        else {
+            exCfg.command+=c;
+            exCfg.execcommand+=c;
+        }
     }
   
 }
@@ -618,43 +622,38 @@ void executeCommand(){
 
     // "\x1b[1D\x1b[K"
 
-    std::string command = exCfg.command;
+    std::string command = exCfg.execcommand;
+
     exCfg.command="";
-    // std::string processedCommand="";
-    // for(int i=0; i<command.size()-1; i++){
-    //     if(i+1==command.size() || command[i+1]!='\x1b') processedCommand+=command[i];
-    //     else{
-    //         i+=8;
-    //     }
-    // }
-    // command=processedCommand;
+    exCfg.execcommand="";
 
     if(command=="quit") executeQuit();
     else {
         std::vector<std::string> components = processCommand(command);
         int n=components.size();
         if(components[0]=="copy"){
-            std::vector<std::string> sourcefiles;
-            std::string destinationDirectory;
+            // std::vector<std::string> sourcefiles;
+            // std::string destinationDirectory;
 
-            for(int i=1; i<n-1; i++){
-                std::string sourceFile=components[i];
-                sourceFile=osd.d+"/"+components[i];
-                sourcefiles.push_back(sourceFile);
-            }
+            // for(int i=1; i<n-1; i++){
+            //     std::string sourceFile=components[i];
+            //     sourceFile=osd.d+"/"+components[i];
+            //     sourcefiles.push_back(sourceFile);
+            // }
 
-            destinationDirectory=components[n-1];
-            destinationDirectory=osd.d+destinationDirectory.substr(1);
+            // destinationDirectory=components[n-1];
+            // destinationDirectory=osd.d+destinationDirectory.substr(1);
 
-            if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="failed!";
-            else osd.commandStatus="executed!";
+            // if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="failed!";
+            // else osd.commandStatus="executed!";
+            osd.commandStatus="\x1b[Kexecuted";
             
         }else if(components[0]=="move"){
 
         }else if(components[0]=="rename"){
 
         }else{
-            osd.commandStatus="Invalid Command!";
+            osd.commandStatus="\x1b[KInvalid Command!";
         }
     }
 }
@@ -770,12 +769,13 @@ void drawNormalMode(){
 
 void drawCommandMode(){
     std::string draw;
+    repositionCursor(1, exCfg.explorerRows-1, draw);
+    draw+=osd.commandStatus;
     repositionCursor(1, exCfg.explorerRows-2, draw);
     draw+="\x1b[K\033[40;1;7m Command Mode:\033[0m$ ";
     draw+=exCfg.command;
-    // draw+="\n";
-    // draw+=osd.commandStatus;
-    // osd.commandStatus="";
+    
+    osd.commandStatus="";
     appendBuffer+=draw;
 }
 
