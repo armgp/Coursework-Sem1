@@ -32,7 +32,7 @@ void drawNormalMode();
 void drawCommandMode();
 void executeCommand();
 std::string getCurrDirectory();
-std::string getProcessedDirectoryPath(std::string dpath);
+std::string getProcessedDirectoryFilePath(std::string dpath);
 
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
@@ -404,13 +404,13 @@ int createDirectory(std::string name, std::string destinationDirectory){
 }
 
 int deleteDirectory(std::string dirPath){
-    std::string processedPath = getProcessedDirectoryPath(dirPath);
+    std::string processedPath = getProcessedDirectoryFilePath(dirPath);
     return 0;
 }
 
 int deleteFile(std::string filePath){
-    std::string processedPath = getProcessedDirectoryPath(filePath);
-    if(remove(filePath.c_str())==0) return 0;
+    std::string processedPath = getProcessedDirectoryFilePath(filePath);
+    if(remove(processedPath.c_str())==0) return 0;
     return 1;
 }
 
@@ -433,7 +433,9 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     // else {
     //     return 1;
     // }
-
+    
+    sourceFile=getProcessedDirectoryFilePath(sourceFile);
+    destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
     std::ifstream  src(sourceFile, std::ios::binary);
     std::ofstream  dst(destinationDirectory,   std::ios::binary);
 
@@ -442,6 +444,11 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     chmod(destinationDirectory.c_str(), perm); 
     // ifile.close();
     // ofile.close();
+    return 0;
+}
+
+int copyDirectory(std::string sourceDir, std::string destinationDirectory){
+
     return 0;
 }
 
@@ -460,10 +467,13 @@ int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirec
 }
 
 int movefiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
+    int stat=0;
     copyfiles(sourcefiles, destinationDirectory);
     for(std::string file : sourcefiles){
-        remove(file.c_str());
+        file=getProcessedDirectoryFilePath(file);
+        if(remove(file.c_str())!=0) stat=1;
     }
+    return stat;
 }
 
 int createfile(std::string name, mode_t perms){
@@ -492,7 +502,6 @@ int createfile(std::string name, std::string destinationDirectory){
     remove(sourceFile.c_str());
     osd.commandStatus="created";
 }
-
 std::vector<std::string> getComponentsOfDir(std::string destinationDirectory){
     std::vector<std::string> destinationComponents;
     int n = destinationDirectory.size();
@@ -506,15 +515,15 @@ std::vector<std::string> getComponentsOfDir(std::string destinationDirectory){
     return destinationComponents;
 }
 
-std::string getProcessedDirectoryPath(std::string destinationDirectory){
+std::string getProcessedDirectoryFilePath(std::string destinationDirectory){
     std::string currdir = osd.d;
     std::vector<std::string> destinationComponents = getComponentsOfDir(destinationDirectory);
     if(destinationComponents.size()>1 && destinationComponents[1]=="home"){
         currDirDet.bwdHistory.push(osd.d);
         return destinationDirectory;
     }else if(destinationComponents[0]=="home"){
-        osd.commandStatus="add / before home";
-        return "failed";
+        currDirDet.bwdHistory.push(osd.d);
+        return "/"+destinationDirectory;
     }
     std::vector<std::string> currDirComponents = getComponentsOfDir(currdir);
     for(std::string comp : destinationComponents){
@@ -557,8 +566,8 @@ void gotoFunction(std::string destinationDirectory){
     // }
     // currdir.pop_back();
     currDirDet.bwdHistory.push(osd.d);
-    if(getProcessedDirectoryPath(destinationDirectory)=="failed") return;
-    else osd.d=getProcessedDirectoryPath(destinationDirectory);
+    if(getProcessedDirectoryFilePath(destinationDirectory)=="failed") return;
+    else osd.d=getProcessedDirectoryFilePath(destinationDirectory);
 }
 
 /** input **/
@@ -704,7 +713,7 @@ void executeQuit(){
             start=i+2;
             i+=2;
         }
-        else if(command[i]==' ' || i==n-1){
+        if(command[i]==' ' || i==n-1){
             int count;
             if(i==n-1) count = n-start;
             else count = i-start;
@@ -748,19 +757,20 @@ void executeCommand(){
 
                 for(int i=1; i<n-1; i++){
                     std::string sourceFile=components[i];
-                    sourceFile=osd.d+"/"+components[i];
+                    // sourceFile=osd.d+"/"+components[i];
+                    sourceFile=components[i];
                     sourcefiles.push_back(sourceFile);
                 }
 
                 destinationDirectory=components[n-1];
-                destinationDirectory=osd.d+"/"+destinationDirectory;
+                // destinationDirectory=osd.d+"/"+destinationDirectory;
 
                 if(components[0]=="copy" ){
-                    if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
-                    else osd.commandStatus="\x1b[Kexecuted!";
+                    if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="failed!";
+                    else osd.commandStatus="executed!";
                 }else if(components[0]=="move" ){
-                    if(movefiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="\x1b[Kfailed!";
-                    else osd.commandStatus="\x1b[Kexecuted!";
+                    if(movefiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="failed!";
+                    else osd.commandStatus="executed!";
                 }
             }else if(components[0]=="rename"){
                 std::string sourceFile=osd.d+"/"+components[1];
@@ -769,8 +779,8 @@ void executeCommand(){
                     newName+=components[i];
                     if(i!=n-1)newName+=" ";
                 }
-                if(renameFile(sourceFile, newName)!=0) osd.commandStatus="\x1b[Kfailed!";
-                else osd.commandStatus="\x1b[Kexecuted!";
+                if(renameFile(sourceFile, newName)!=0) osd.commandStatus="failed!";
+                else osd.commandStatus="executed!";
             }else if(components[0]=="create_file"){
                 if(components.size()>=3) createfile(components[1], components[2]);
                 else osd.commandStatus="invalid command";
