@@ -31,6 +31,7 @@ void processKeyPress();
 void drawNormalMode();
 void drawCommandMode();
 void executeCommand();
+int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory);
 std::string getCurrDirectory();
 std::string getProcessedDirectoryFilePath(std::string dpath);
 
@@ -386,23 +387,7 @@ std::string getSourceDirectory(std::string sourcefile){
     return sourcefile.substr(0,i+1);
 }
 
-int createDirectory(std::string name, std::string destinationDirectory){
-    // mode_t perms = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; 
-    const int d = mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-    if (d==-1){
-        printf("Error creating directory!n");
-        return 1;
-    }
-
-    std::string sourceFile=getCurrDirectory()+"/"+name;
-    destinationDirectory=osd.d+"/"+destinationDirectory;
-
-    // copyfolders({sourceFile}, destinationDirectory);
-    // rmdir(sourceFile.c_str());
-    osd.commandStatus="created folder";
-    return 0;
-}
-
+//todo
 int deleteDirectory(std::string dirPath){
     std::string processedPath = getProcessedDirectoryFilePath(dirPath);
     return 0;
@@ -412,6 +397,45 @@ int deleteFile(std::string filePath){
     std::string processedPath = getProcessedDirectoryFilePath(filePath);
     if(remove(processedPath.c_str())==0) return 0;
     return 1;
+}
+
+//todo
+int copyDirectory(std::string sourceDir, std::string destinationDirectory){
+
+    struct stat statBuff;
+    stat(sourceDir.c_str(), &statBuff);
+    const int d = mkdir(destinationDirectory.c_str(), statBuff.st_mode);
+    if (d==-1){
+        osd.commandStatus="Error creating directory!"+destinationDirectory;
+        return 1;
+    }
+
+    DIR* dir = opendir(sourceDir.c_str());
+    if(dir==NULL) {
+        osd.commandStatus="Directory doesn't exist";
+        return 1;
+    }
+    struct dirent* entity;
+    entity = readdir(dir);
+
+    while (entity!=NULL){
+        std::string dname(entity->d_name);
+        if(dname!=".." && dname!="."){
+            std::string currSource = sourceDir+"/"+dname;
+            stat(currSource.c_str(), &statBuff);
+            if(S_ISDIR(statBuff.st_mode)) {
+                std::string currDestination = destinationDirectory+"/"+dname;
+                copyDirectory(currSource, currDestination);
+            }else{
+                copyfiles({currSource}, destinationDirectory);
+            }
+        }
+        
+        entity = readdir(dir);
+    }
+
+    closedir(dir);
+    return 0;
 }
 
 int copyfile(std::string sourceFile, std::string destinationDirectory){
@@ -436,30 +460,37 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     
     sourceFile=getProcessedDirectoryFilePath(sourceFile);
     destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
-    std::ifstream  src(sourceFile, std::ios::binary);
-    std::ofstream  dst(destinationDirectory,   std::ios::binary);
 
-    stat(sourceFile.c_str(), &st);    
-    mode_t perm = st.st_mode;
-    chmod(destinationDirectory.c_str(), perm); 
-    // ifile.close();
-    // ofile.close();
-    return 0;
-}
+    struct stat statBuff;
+    stat(sourceFile.c_str(), &statBuff);
+    if(S_ISDIR(statBuff.st_mode)){
+        copyDirectory(sourceFile, destinationDirectory);
+    }else{
+        std::ifstream  src(sourceFile, std::ios::binary);
+        std::ofstream  dst(destinationDirectory,   std::ios::binary);
 
-int copyDirectory(std::string sourceDir, std::string destinationDirectory){
-
+        stat(sourceFile.c_str(), &st);    
+        mode_t perm = st.st_mode;
+        chmod(destinationDirectory.c_str(), perm); 
+        // ifile.close();
+        // ofile.close();
+    }   
     return 0;
 }
 
 int renameFile(std::string sourceFile, std::string newName){
     if(copyfile(sourceFile, getSourceDirectory(sourceFile)+newName)!=0) return 1;
     if(remove(sourceFile.c_str())!=0) return 1;
+    return 0;
 }
 
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
     for(std::string sourcefile : sourcefiles){
         std::string sourceName=getSourceName(sourcefile);
+        if(sourceName==".." || sourceName=="."){
+            osd.commandStatus="Dont use .. or . as source during copying or moving files.";
+            return 1;
+        }
         // std::cout<<sourcefile<<" -to- "<<destinationDirectory+"/"+sourceName<<"\n";
         if(copyfile(sourcefile, destinationDirectory+"/"+sourceName)!=0) return 1;
     }
@@ -468,7 +499,7 @@ int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirec
 
 int movefiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
     int stat=0;
-    copyfiles(sourcefiles, destinationDirectory);
+    if(copyfiles(sourcefiles, destinationDirectory)==1) return 1;
     for(std::string file : sourcefiles){
         file=getProcessedDirectoryFilePath(file);
         if(remove(file.c_str())!=0) stat=1;
@@ -501,7 +532,27 @@ int createfile(std::string name, std::string destinationDirectory){
     copyfiles({sourceFile}, destinationDirectory);
     remove(sourceFile.c_str());
     osd.commandStatus="created";
+    return 0;
 }
+
+int createDirectory(std::string name, std::string destinationDirectory){
+    // mode_t perms = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; 
+    const int d = mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    if (d==-1){
+        printf("Error creating directory!n");
+        return 1;
+    }
+
+    std::string sourceFolder=getCurrDirectory()+"/"+name;
+    destinationDirectory=osd.d+"/"+destinationDirectory;
+
+    // copyfolder(sourceFolder, destinationDirectory);
+
+    // rmdir(sourceFile.c_str());
+    osd.commandStatus="created folder";
+    return 0;
+}
+
 std::vector<std::string> getComponentsOfDir(std::string destinationDirectory){
     std::vector<std::string> destinationComponents;
     int n = destinationDirectory.size();
@@ -752,6 +803,7 @@ void executeCommand(){
         else {
             int n=components.size();
             if(components[0]=="copy" || components[0]=="move"){
+
                 std::vector<std::string> sourcefiles;
                 std::string destinationDirectory;
 
@@ -766,11 +818,9 @@ void executeCommand(){
                 // destinationDirectory=osd.d+"/"+destinationDirectory;
 
                 if(components[0]=="copy" ){
-                    if(copyfiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="failed!";
-                    else osd.commandStatus="executed!";
+                    if(copyfiles(sourcefiles, destinationDirectory)==0) osd.commandStatus="executed!";
                 }else if(components[0]=="move" ){
-                    if(movefiles(sourcefiles, destinationDirectory)==1) osd.commandStatus="failed!";
-                    else osd.commandStatus="executed!";
+                    if(movefiles(sourcefiles, destinationDirectory)==0) osd.commandStatus="executed!";
                 }
             }else if(components[0]=="rename"){
                 std::string sourceFile=osd.d+"/"+components[1];
