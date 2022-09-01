@@ -31,6 +31,7 @@ void processKeyPress();
 void drawNormalMode();
 void drawCommandMode();
 void executeCommand();
+int copyfile(std::string sourceFile, std::string destinationDirectory);
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory);
 std::string getCurrDirectory();
 std::string getProcessedDirectoryFilePath(std::string dpath);
@@ -425,9 +426,12 @@ int copyDirectory(std::string sourceDir, std::string destinationDirectory){
             stat(currSource.c_str(), &statBuff);
             if(S_ISDIR(statBuff.st_mode)) {
                 std::string currDestination = destinationDirectory+"/"+dname;
-                copyDirectory(currSource, currDestination);
+                if(copyDirectory(currSource, currDestination)==1) return 1;
             }else{
-                copyfiles({currSource}, destinationDirectory);
+                if(copyfiles({currSource}, destinationDirectory)==1){
+                    osd.commandStatus="copying interuppted";
+                    return 1;
+                }
             }
         }
         
@@ -439,24 +443,8 @@ int copyDirectory(std::string sourceDir, std::string destinationDirectory){
 }
 
 int copyfile(std::string sourceFile, std::string destinationDirectory){
-    // std::string line;
     struct stat st;
-    // std::ifstream ifile{
-    //     // "/home/user/Documents/Coursework/AOS/Assg/AOS_Assignment_1.pdf"
-    //     sourceFile
-    // }; 
-    // std::ofstream ofile{ 
-    //     // "/home/user/Documents/Coursework/AOS/AOS_Assignment_1.pdf"
-    //     destinationDirectory 
-    // };
-    // if (ifile && ofile) {
-    //     while (getline(ifile, line)) {
-    //         ofile << line << "\n";
-    //     }
-    // }
-    // else {
-    //     return 1;
-    // }
+
     
     sourceFile=getProcessedDirectoryFilePath(sourceFile);
     destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
@@ -466,14 +454,30 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     if(S_ISDIR(statBuff.st_mode)){
         copyDirectory(sourceFile, destinationDirectory);
     }else{
-        std::ifstream  src(sourceFile, std::ios::binary);
-        std::ofstream  dst(destinationDirectory,   std::ios::binary);
+        // std::ifstream  src(sourceFile, std::ios::binary);
+        // std::ofstream  dst(destinationDirectory,   std::ios::binary);
+
+        std::string line;
+        std::ifstream ifile{
+            sourceFile
+        }; 
+        std::ofstream ofile{ 
+            destinationDirectory 
+        };
+        if (ifile && ofile) {
+            while (getline(ifile, line)) {
+                ofile << line << "\n";
+            }
+        }
+        else {
+            return 1;
+        }
+        ifile.close();
+        ofile.close();
 
         stat(sourceFile.c_str(), &st);    
         mode_t perm = st.st_mode;
         chmod(destinationDirectory.c_str(), perm); 
-        // ifile.close();
-        // ofile.close();
     }   
     return 0;
 }
