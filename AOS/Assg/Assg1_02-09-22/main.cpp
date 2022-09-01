@@ -32,6 +32,7 @@ void drawNormalMode();
 void drawCommandMode();
 void executeCommand();
 std::string getCurrDirectory();
+std::string getProcessedDirectoryPath(std::string dpath);
 
 /** define **/
 #define CTRL_KEY(k) ((k) & 0x1f)
@@ -385,12 +386,32 @@ std::string getSourceDirectory(std::string sourcefile){
     return sourcefile.substr(0,i+1);
 }
 
-void createDirectory(std::string name){
+int createDirectory(std::string name, std::string destinationDirectory){
+    // mode_t perms = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; 
     const int d = mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if (d==-1){
         printf("Error creating directory!n");
-        exit(1);
+        return 1;
     }
+
+    std::string sourceFile=getCurrDirectory()+"/"+name;
+    destinationDirectory=osd.d+"/"+destinationDirectory;
+
+    // copyfolders({sourceFile}, destinationDirectory);
+    // rmdir(sourceFile.c_str());
+    osd.commandStatus="created folder";
+    return 0;
+}
+
+int deleteDirectory(std::string dirPath){
+    std::string processedPath = getProcessedDirectoryPath(dirPath);
+    return 0;
+}
+
+int deleteFile(std::string filePath){
+    std::string processedPath = getProcessedDirectoryPath(filePath);
+    if(remove(filePath.c_str())==0) return 0;
+    return 1;
 }
 
 int copyfile(std::string sourceFile, std::string destinationDirectory){
@@ -485,22 +506,59 @@ std::vector<std::string> getComponentsOfDir(std::string destinationDirectory){
     return destinationComponents;
 }
 
-void gotoFunction(std::string destinationDirectory){
+std::string getProcessedDirectoryPath(std::string destinationDirectory){
     std::string currdir = osd.d;
-    std::vector<std::string> currDirComponents = getComponentsOfDir(currdir);
     std::vector<std::string> destinationComponents = getComponentsOfDir(destinationDirectory);
+    if(destinationComponents.size()>1 && destinationComponents[1]=="home"){
+        currDirDet.bwdHistory.push(osd.d);
+        return destinationDirectory;
+    }else if(destinationComponents[0]=="home"){
+        osd.commandStatus="add / before home";
+        return "failed";
+    }
+    std::vector<std::string> currDirComponents = getComponentsOfDir(currdir);
     for(std::string comp : destinationComponents){
         if(comp=="..") {
             if(currDirComponents.size()>0) currDirComponents.pop_back();
-        }
-        else currDirComponents.push_back(comp);
+        }else if(comp=="."){
+            continue;
+        }else currDirComponents.push_back(comp);
     }
     currdir="";
     for(std::string comp : currDirComponents){
         currdir+=comp+"/";
     }
     currdir.pop_back();
-    osd.d=currdir;
+    return currdir;
+}
+
+void gotoFunction(std::string destinationDirectory){
+    // std::string currdir = osd.d;
+    // std::vector<std::string> destinationComponents = getComponentsOfDir(destinationDirectory);
+    // if(destinationComponents.size()>1 && destinationComponents[1]=="home"){
+    //     currDirDet.bwdHistory.push(osd.d);
+    //     osd.d=destinationDirectory;
+    //     return;
+    // }else if(destinationComponents[0]=="home"){
+    //     osd.commandStatus="add / before home";
+    //     return;
+    // }
+    // std::vector<std::string> currDirComponents = getComponentsOfDir(currdir);
+    // for(std::string comp : destinationComponents){
+    //     if(comp=="..") {
+    //         if(currDirComponents.size()>0) currDirComponents.pop_back();
+    //     }else if(comp=="."){
+    //         continue;
+    //     }else currDirComponents.push_back(comp);
+    // }
+    // currdir="";
+    // for(std::string comp : currDirComponents){
+    //     currdir+=comp+"/";
+    // }
+    // currdir.pop_back();
+    currDirDet.bwdHistory.push(osd.d);
+    if(getProcessedDirectoryPath(destinationDirectory)=="failed") return;
+    else osd.d=getProcessedDirectoryPath(destinationDirectory);
 }
 
 /** input **/
@@ -714,11 +772,27 @@ void executeCommand(){
                 if(renameFile(sourceFile, newName)!=0) osd.commandStatus="\x1b[Kfailed!";
                 else osd.commandStatus="\x1b[Kexecuted!";
             }else if(components[0]=="create_file"){
-                createfile(components[1], components[2]);
+                if(components.size()>=3) createfile(components[1], components[2]);
+                else osd.commandStatus="invalid command";
+            }else if(components[0]=="delete_file"){
+                if(components.size()>=2) {
+                    if(deleteFile(components[1])==0) osd.commandStatus="deleted";
+                    else osd.commandStatus="error in deleting";
+                }
+                else osd.commandStatus="invalid command";
             }else if(components[0]=="create_dir"){
-
+                if(components.size()>=3) createDirectory(components[1], components[2]);
+                else osd.commandStatus="invalid command";
+            }else if(components[0]=="delete_dir"){
+                if(components.size()>=2) deleteDirectory(components[1]);
+                else osd.commandStatus="invalid command";
             }else if(components[0]=="goto"){
-                gotoFunction(components[1]);
+                std::string dir="";
+                for(int i=1; i<n; i++){
+                    dir+=components[i]+" ";
+                }
+                dir.pop_back();
+                gotoFunction(dir);
             }
             else{
                 osd.commandStatus="\x1b[KInvalid Command!";
