@@ -31,6 +31,7 @@ void processKeyPress();
 void drawNormalMode();
 void drawCommandMode();
 void executeCommand();
+int deleteFile(std::string filePath);
 int copyfile(std::string sourceFile, std::string destinationDirectory);
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory);
 std::string getCurrDirectory();
@@ -390,7 +391,35 @@ std::string getSourceDirectory(std::string sourcefile){
 
 //todo
 int deleteDirectory(std::string dirPath){
-    std::string processedPath = getProcessedDirectoryFilePath(dirPath);
+    struct stat statBuff;
+    stat(dirPath.c_str(), &statBuff);
+    if (!S_ISDIR(statBuff.st_mode)){
+        osd.commandStatus="Given path is not a directory";
+        return 1;
+    }else{
+        DIR* dir = opendir(dirPath.c_str());
+        if(dir==NULL) {
+            osd.commandStatus="Directory doesn't exist";
+            return 1;
+        }
+        struct dirent* entity;
+        entity = readdir(dir);
+        while (entity!=NULL){
+            std::string dname(entity->d_name);
+            if(dname!=".." && dname!="."){
+                std::string currSource = dirPath+"/"+dname;
+                stat(currSource.c_str(), &statBuff);
+                if(S_ISDIR(statBuff.st_mode)) {
+                    deleteDirectory(currSource);
+                }else{
+                    deleteFile(currSource);
+                }
+            }
+
+            entity = readdir(dir);
+        }
+    }
+    rmdir(dirPath.c_str());
     return 0;
 }
 
@@ -402,7 +431,6 @@ int deleteFile(std::string filePath){
 
 //todo
 int copyDirectory(std::string sourceDir, std::string destinationDirectory){
-
     struct stat statBuff;
     stat(sourceDir.c_str(), &statBuff);
     const int d = mkdir(destinationDirectory.c_str(), statBuff.st_mode);
@@ -541,18 +569,13 @@ int createfile(std::string name, std::string destinationDirectory){
 
 int createDirectory(std::string name, std::string destinationDirectory){
     // mode_t perms = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; 
-    const int d = mkdir(name.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
+    std::string path=destinationDirectory+"/"+name;
+    mode_t perms = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+    int d = mkdir(path.c_str(), perms);
     if (d==-1){
-        printf("Error creating directory!n");
+        osd.commandStatus="error creating directory";
         return 1;
     }
-
-    std::string sourceFolder=getCurrDirectory()+"/"+name;
-    destinationDirectory=osd.d+"/"+destinationDirectory;
-
-    // copyfolder(sourceFolder, destinationDirectory);
-
-    // rmdir(sourceFile.c_str());
     osd.commandStatus="created folder";
     return 0;
 }
@@ -845,10 +868,10 @@ void executeCommand(){
                 }
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="create_dir"){
-                if(components.size()>=3) createDirectory(components[1], components[2]);
+                if(components.size()>=3) createDirectory(components[1], getProcessedDirectoryFilePath(components[2]));
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="delete_dir"){
-                if(components.size()>=2) deleteDirectory(components[1]);
+                if(components.size()>=2) deleteDirectory(getProcessedDirectoryFilePath(components[1]));
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="goto"){
                 std::string dir="";
