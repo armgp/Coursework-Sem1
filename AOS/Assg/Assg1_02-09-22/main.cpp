@@ -31,6 +31,7 @@ void processKeyPress();
 void drawNormalMode();
 void drawCommandMode();
 void executeCommand();
+int createDirectory(std::string destination);
 int deleteFile(std::string filePath);
 int copyfile(std::string sourceFile, std::string destinationDirectory);
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory);
@@ -386,7 +387,7 @@ std::string getSourceDirectory(std::string sourcefile){
     for(; i>=0; i--){
         if(sourcefile[i]=='/') break;
     }
-    return sourcefile.substr(0,i+1);
+    return sourcefile.substr(0,i);
 }
 
 int deleteDirectory(std::string dirPath){
@@ -476,10 +477,11 @@ int copyDirectory(std::string sourceDir, std::string destinationDirectory){
 
 int copyfile(std::string sourceFile, std::string destinationDirectory){
     struct stat st;
-
     
     sourceFile=getProcessedDirectoryFilePath(sourceFile);
     destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
+
+    if(createDirectory(destinationDirectory)!=0) return 1;
 
     struct stat statBuff;
     stat(sourceFile.c_str(), &statBuff);
@@ -518,10 +520,10 @@ int renameObject(std::string sourceFile, std::string newName){
     struct stat statBuff;
     stat(sourceFile.c_str(), &statBuff);
     if(S_ISDIR(statBuff.st_mode)){
-        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+newName)!=0) return 1;
+        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+"/"+newName)!=0) return 1;
         if(deleteDirectory(sourceFile.c_str())!=0) return 1;
     }else{
-        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+newName)!=0) return 1;
+        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+"/"+newName)!=0) return 1;
         if(remove(sourceFile.c_str())!=0) return 1;
     }
     return 0;
@@ -594,6 +596,25 @@ int createDirectory(std::string name, std::string destinationDirectory){
         return 1;
     }
     osd.commandStatus="created folder";
+    return 0;
+}
+
+int createDirectory(std::string destination){
+    DIR* dir = opendir(destination.c_str());
+    if (dir) {
+        /* Directory exists. */
+        closedir(dir);
+        return 0;
+    } else if (ENOENT == errno) {
+        /* Directory does not exist. */
+        std::string srcDest = getSourceDirectory(destination);
+        if(createDirectory(srcDest)==0)
+            createDirectory(getSourceName(destination), srcDest);
+        else return 1;
+    } else {
+        /* opendir() failed for some other reason. */
+        return 1;
+    }
     return 0;
 }
 
@@ -916,7 +937,11 @@ void executeCommand(){
                 }
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="create_dir"){
-                if(components.size()>=3) createDirectory(components[1], getProcessedDirectoryFilePath(components[2]));
+                if(components.size()>=3) {
+                    std::string destPath = getProcessedDirectoryFilePath(components[2]);
+                    createDirectory(destPath);
+                    createDirectory(components[1], destPath);
+                }
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="delete_dir"){
                 if(components.size()>=2) deleteDirectory(getProcessedDirectoryFilePath(components[1]));
