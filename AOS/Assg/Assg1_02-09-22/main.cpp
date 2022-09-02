@@ -31,7 +31,7 @@ void processKeyPress();
 void drawNormalMode();
 void drawCommandMode();
 void executeCommand();
-int createDirectory(std::string destination);
+void executeQuit();
 int deleteFile(std::string filePath);
 int copyfile(std::string sourceFile, std::string destinationDirectory);
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory);
@@ -99,7 +99,9 @@ void die(const char* s){
 }
 
 void disableRawMode(){
+    write(STDOUT_FILENO, "\033[3J", 4);
     if(tcsetattr(STDIN_FILENO, TCSAFLUSH, &exCfg.origTermios)==-1) die("tcsetattr");
+
 }
 
 void enableRawMode(){
@@ -387,7 +389,7 @@ std::string getSourceDirectory(std::string sourcefile){
     for(; i>=0; i--){
         if(sourcefile[i]=='/') break;
     }
-    return sourcefile.substr(0,i);
+    return sourcefile.substr(0,i+1);
 }
 
 int deleteDirectory(std::string dirPath){
@@ -481,8 +483,6 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     sourceFile=getProcessedDirectoryFilePath(sourceFile);
     destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
 
-    if(createDirectory(destinationDirectory)!=0) return 1;
-
     struct stat statBuff;
     stat(sourceFile.c_str(), &statBuff);
     if(S_ISDIR(statBuff.st_mode)){
@@ -520,10 +520,10 @@ int renameObject(std::string sourceFile, std::string newName){
     struct stat statBuff;
     stat(sourceFile.c_str(), &statBuff);
     if(S_ISDIR(statBuff.st_mode)){
-        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+"/"+newName)!=0) return 1;
+        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+newName)!=0) return 1;
         if(deleteDirectory(sourceFile.c_str())!=0) return 1;
     }else{
-        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+"/"+newName)!=0) return 1;
+        if(copyfile(sourceFile, getSourceDirectory(sourceFile)+newName)!=0) return 1;
         if(remove(sourceFile.c_str())!=0) return 1;
     }
     return 0;
@@ -599,25 +599,6 @@ int createDirectory(std::string name, std::string destinationDirectory){
     return 0;
 }
 
-int createDirectory(std::string destination){
-    DIR* dir = opendir(destination.c_str());
-    if (dir) {
-        /* Directory exists. */
-        closedir(dir);
-        return 0;
-    } else if (ENOENT == errno) {
-        /* Directory does not exist. */
-        std::string srcDest = getSourceDirectory(destination);
-        if(createDirectory(srcDest)==0)
-            createDirectory(getSourceName(destination), srcDest);
-        else return 1;
-    } else {
-        /* opendir() failed for some other reason. */
-        return 1;
-    }
-    return 0;
-}
-
 std::vector<std::string> getComponentsOfDir(std::string destinationDirectory){
     std::vector<std::string> destinationComponents;
     int n = destinationDirectory.size();
@@ -658,29 +639,6 @@ std::string getProcessedDirectoryFilePath(std::string destinationDirectory){
 }
 
 void gotoFunction(std::string destinationDirectory){
-    // std::string currdir = osd.d;
-    // std::vector<std::string> destinationComponents = getComponentsOfDir(destinationDirectory);
-    // if(destinationComponents.size()>1 && destinationComponents[1]=="home"){
-    //     currDirDet.bwdHistory.push(osd.d);
-    //     osd.d=destinationDirectory;
-    //     return;
-    // }else if(destinationComponents[0]=="home"){
-    //     osd.commandStatus="add / before home";
-    //     return;
-    // }
-    // std::vector<std::string> currDirComponents = getComponentsOfDir(currdir);
-    // for(std::string comp : destinationComponents){
-    //     if(comp=="..") {
-    //         if(currDirComponents.size()>0) currDirComponents.pop_back();
-    //     }else if(comp=="."){
-    //         continue;
-    //     }else currDirComponents.push_back(comp);
-    // }
-    // currdir="";
-    // for(std::string comp : currDirComponents){
-    //     currdir+=comp+"/";
-    // }
-    // currdir.pop_back();
     currDirDet.bwdHistory.push(osd.d);
     if(getProcessedDirectoryFilePath(destinationDirectory)=="failed") return;
     else osd.d=getProcessedDirectoryFilePath(destinationDirectory);
@@ -811,11 +769,7 @@ void processKeyPress(){
         exCfg.expMode=0;
     }
     else if((c=='Q' || c=='q') && exCfg.expMode==0){
-        //to change the colors back to default 
-        write(STDOUT_FILENO, "\x1b[0m", 4);
-        //to clear screen when exiting
-        write(STDOUT_FILENO, "\x1b[2J", 4);
-        exit(0);
+        executeQuit();
     }else if(exCfg.expMode==1){
         if(c==BACKSPACE){
             int y,x;
@@ -844,8 +798,11 @@ void processKeyPress(){
 void executeQuit(){
     //to change the colors back to default 
     write(STDOUT_FILENO, "\x1b[0m", 4);
+
+    write(STDOUT_FILENO, "\x1b[H", 3);
     //to clear screen when exiting
-    write(STDOUT_FILENO, "\x1b[2J", 4);
+    write(STDOUT_FILENO, "\033[2J", 4);
+    write(STDOUT_FILENO, "\033[3J", 4);
     exit(0);
 }
 
@@ -937,11 +894,7 @@ void executeCommand(){
                 }
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="create_dir"){
-                if(components.size()>=3) {
-                    std::string destPath = getProcessedDirectoryFilePath(components[2]);
-                    createDirectory(destPath);
-                    createDirectory(components[1], destPath);
-                }
+                if(components.size()>=3) createDirectory(components[1], getProcessedDirectoryFilePath(components[2]));
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="delete_dir"){
                 if(components.size()>=2) deleteDirectory(getProcessedDirectoryFilePath(components[1]));
@@ -1090,7 +1043,7 @@ void drawCommandMode(){
     std::string draw;
     for(int i=0; i<=n; i++){
         if(i==n-1){
-            draw+="\x1b[K\x1b[H";
+            draw+="\033[3J\x1b[K\x1b[H";
             break;
         }else if(i==0){
             draw+="\x1b[K\x1b[1G";
