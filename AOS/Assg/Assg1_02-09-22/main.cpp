@@ -669,6 +669,7 @@ bool searchForObject(std::string objName, std::string sourceDir){
     struct stat statBuff;
 
     DIR* dir = opendir(sourceDir.c_str());
+    if(dir==NULL) return false;
     struct dirent* entity;
     entity = readdir(dir);
 
