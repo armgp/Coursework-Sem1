@@ -482,7 +482,7 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     
     sourceFile=getProcessedDirectoryFilePath(sourceFile);
     destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
-
+    if(sourceFile==destinationDirectory) return 0;
     struct stat statBuff;
     stat(sourceFile.c_str(), &statBuff);
     if(S_ISDIR(statBuff.st_mode)){
@@ -545,8 +545,12 @@ int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirec
 int movefiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
     int status=0;
     if(copyfiles(sourcefiles, destinationDirectory)==1) return 1;
+    destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
     for(std::string file : sourcefiles){
         file=getProcessedDirectoryFilePath(file);
+        std::string srcDir = getSourceDirectory(file);
+        srcDir.pop_back();
+        if(srcDir==destinationDirectory) return 0;
         struct stat statBuff;
         stat(file.c_str(), &statBuff);
         if(S_ISDIR(statBuff.st_mode)){
@@ -786,6 +790,9 @@ void processKeyPress(){
         } 
         else if(c=='\r'){
             executeCommand();
+        }else if(c=='\t'){
+            exCfg.command+=c;
+            exCfg.execcommand+="        ";
         }
         else {
             exCfg.command+=c;
