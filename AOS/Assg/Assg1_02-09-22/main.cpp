@@ -437,6 +437,20 @@ int deleteFile(std::string filePath){
     return 1;
 }
 
+int deleteFiles(std::vector<std::string> sourcefiles){
+    for(std::string sourcefile : sourcefiles){
+        if(deleteFile(sourcefile)!=0) return 1;
+    }
+    return 0;
+}
+
+int deleteDirs(std::vector<std::string> sourcedirs){
+    for(std::string sourcedir : sourcedirs){
+        if(deleteDirectory(getProcessedDirectoryFilePath(sourcedir))!=0) return 1;
+    }
+    return 0;
+}
+
 int copyDirectory(std::string sourceDir, std::string destinationDirectory){
     struct stat statBuff;
     stat(sourceDir.c_str(), &statBuff);
@@ -482,7 +496,48 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
     
     sourceFile=getProcessedDirectoryFilePath(sourceFile);
     destinationDirectory=getProcessedDirectoryFilePath(destinationDirectory);
-    if(sourceFile==destinationDirectory) return 0;
+    // if(sourceFile==destinationDirectory){
+    //     std::string srcName = getSourceName(sourceFile);
+    //     int srcNameLen = srcName.size();
+    //     std::string newname;
+    //     for(int i=srcNameLen-1; i>=0; i--){
+    //         if(srcName[i]=='.'){
+    //             newname = srcName.substr(0, i)+"(copy)";
+    //             newname+=".";
+    //             newname+=srcName.substr(i+1);
+    //             break;
+    //         }
+    //         if(i==0){
+    //             newname=srcName+"(copy)";
+    //         }
+    //     }
+    //     destinationDirectory=getSourceDirectory(destinationDirectory);
+    //     destinationDirectory+=newname;
+    // } 
+    
+    int dstRef;
+    int duplicate=0;
+    while ((dstRef = open(destinationDirectory.c_str(), O_RDONLY)) != -1){
+        duplicate++;
+        std::string srcName = getSourceName(sourceFile);
+        int srcNameLen = srcName.size();
+        std::string newname;
+        for(int i=srcNameLen-1; i>=0; i--){
+            if(srcName[i]=='.'){
+                newname = srcName.substr(0, i)+"(copy"+std::to_string(duplicate)+")";
+                newname+=".";
+                newname+=srcName.substr(i+1);
+                break;
+            }
+            if(i==0){
+                newname=srcName+"(copy"+std::to_string(duplicate)+")";
+            }
+        }
+        destinationDirectory=getSourceDirectory(destinationDirectory);
+        destinationDirectory+=newname;
+        close(dstRef);
+    }
+
     struct stat statBuff;
     stat(sourceFile.c_str(), &statBuff);
     if(S_ISDIR(statBuff.st_mode)){
@@ -491,27 +546,55 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
         // std::ifstream  src(sourceFile, std::ios::binary);
         // std::ofstream  dst(destinationDirectory,   std::ios::binary);
 
-        std::string line;
-        std::ifstream ifile{
-            sourceFile
-        }; 
-        std::ofstream ofile{ 
-            destinationDirectory 
-        };
-        if (ifile && ofile) {
-            while (getline(ifile, line)) {
-                ofile << line << "\n";
-            }
-        }
-        else {
+        // std::string line;
+        // std::ifstream ifile{
+        //     sourceFile
+        // }; 
+        // std::ofstream ofile{ 
+        //     destinationDirectory 
+        // };
+        // if (ifile && ofile) {
+        //     while (getline(ifile, line)) {
+        //         ofile << line << "\n";
+        //     }
+        // }
+        // else {
+        //     return 1;
+        // }
+        // ifile.close();
+        // ofile.close();
+
+        // stat(sourceFile.c_str(), &st);    
+        // mode_t perm = st.st_mode;
+        // chmod(destinationDirectory.c_str(), perm); 
+
+        int inRef;
+        int outRef;
+        char *buffer[128];
+
+        if ((inRef = open(sourceFile.c_str(), O_RDONLY)) == -1){
+            osd.commandStatus="Failed to open sourcefile";
             return 1;
         }
-        ifile.close();
-        ofile.close();
+
+        if ((outRef = open(destinationDirectory.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666)) == -1){
+            osd.commandStatus="Failed to open newfile";
+            return 1;
+        }
+
+        while ((read(inRef, buffer, sizeof(buffer))) != 0)
+        {
+            write(outRef, buffer, sizeof(buffer));
+            bzero(buffer, sizeof(buffer));
+        }
+
+        close(outRef);
+        close(inRef);
 
         stat(sourceFile.c_str(), &st);    
         mode_t perm = st.st_mode;
         chmod(destinationDirectory.c_str(), perm); 
+
     }   
     return 0;
 }
@@ -530,6 +613,10 @@ int renameObject(std::string sourceFile, std::string newName){
 }
 
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
+    if(sourcefiles.size()==0){
+        osd.commandStatus="Provide the source file for successful operation";
+        return 1;
+    }
     for(std::string sourcefile : sourcefiles){
         std::string sourceName=getSourceName(sourcefile);
         if(sourceName==".." || sourceName=="."){
@@ -838,7 +925,7 @@ void executeQuit(){
     for(int i=1; i<m; i++){
         if(components[i]=="copy" || components[i]=="move" || components[i]=="rename" || 
         components[i]=="create_file" || components[i]=="create_dir" || components[i]=="delete_file" || 
-        components[i]=="delete_dir" || components[i]=="goto" || components[i]=="search"){
+        components[i]=="delete_dir" || components[i]=="goto" || components[i]=="search" || components[i]=="quit"){
             allCommands.push_back(comm);
             comm={components[i]};
         }else{
@@ -869,8 +956,6 @@ void executeCommand(){
 
                 for(int i=1; i<n-1; i++){
                     std::string sourceFile=components[i];
-                    // sourceFile=osd.d+"/"+components[i];
-                    sourceFile=components[i];
                     sourcefiles.push_back(sourceFile);
                 }
 
@@ -896,7 +981,13 @@ void executeCommand(){
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="delete_file"){
                 if(components.size()>=2) {
-                    if(deleteFile(components[1])==0) osd.commandStatus="deleted";
+                    std::vector<std::string> sourcefiles;
+                    int n=components.size();
+                    for(int i=1; i<n; i++){
+                        std::string sourceFile=components[i];
+                        sourcefiles.push_back(sourceFile);
+                    }
+                    if(deleteFiles(sourcefiles)==0) osd.commandStatus="deleted";
                     else osd.commandStatus="error in deleting";
                 }
                 else osd.commandStatus="invalid command";
@@ -904,7 +995,16 @@ void executeCommand(){
                 if(components.size()>=3) createDirectory(components[1], getProcessedDirectoryFilePath(components[2]));
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="delete_dir"){
-                if(components.size()>=2) deleteDirectory(getProcessedDirectoryFilePath(components[1]));
+                if(components.size()>=2){
+                    std::vector<std::string> sourcedirs;
+                    int n=components.size();
+                    for(int i=1; i<n; i++){
+                        std::string sourceDir=components[i];
+                        sourcedirs.push_back(sourceDir);
+                    }
+                    if(deleteDirs(sourcedirs)==0) osd.commandStatus="deleted";
+                    else osd.commandStatus="error in deleting";
+                } 
                 else osd.commandStatus="invalid command";
             }else if(components[0]=="goto"){
                 std::string dir="";
