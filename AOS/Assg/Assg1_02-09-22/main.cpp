@@ -327,9 +327,10 @@ int populateCurrDirectory(){
         double sz = statBuff.st_size;
         std::string fileSize = formatBytes(sz);
         dirDetails.push_back(fileSize);
-        dirDetails.push_back(getgrgid(statBuff.st_uid)->gr_name);
-        dirDetails.push_back(getpwuid(statBuff.st_gid)->pw_name);
-        
+        if(getgrgid(statBuff.st_uid)) dirDetails.push_back(getgrgid(statBuff.st_uid)->gr_name);
+        else dirDetails.push_back("-----");
+        if(getpwuid(statBuff.st_gid)) dirDetails.push_back(getpwuid(statBuff.st_gid)->pw_name);
+        else dirDetails.push_back("-----");
         
         char time_buf[80];
         // std::string timeBuff;
@@ -373,7 +374,6 @@ void removeLastDir(std::string& d){
     }
 }
 
-/**commands**/
 std::string getSourceName(std::string sourcefile){
     int n = sourcefile.size();
     int i=n-1;
@@ -392,16 +392,17 @@ std::string getSourceDirectory(std::string sourcefile){
     return sourcefile.substr(0,i+1);
 }
 
+/**commands**/
 int deleteDirectory(std::string dirPath){
     struct stat statBuff;
     stat(dirPath.c_str(), &statBuff);
     if (!S_ISDIR(statBuff.st_mode)){
-        osd.commandStatus="Given path is not a directory";
+        osd.commandStatus="\x1b[91mGiven path is not a directory\x1b[0m";
         return 1;
     }else{
         DIR* dir = opendir(dirPath.c_str());
         if(dir==NULL) {
-            osd.commandStatus="Directory doesn't exist";
+            osd.commandStatus="\x1b[91mDirectory doesn't exist\x1b[0m";
             return 1;
         }
         struct dirent* entity;
@@ -430,7 +431,7 @@ int deleteFile(std::string filePath){
     struct stat statBuff;
     stat(processedPath.c_str(), &statBuff);
     if(S_ISDIR(statBuff.st_mode)){
-        osd.commandStatus="Given path is a directory. Use delete_dir to delete directories";
+        osd.commandStatus="\x1b[91mGiven path is a directory. Use delete_dir to delete directories\x1b[0m";
         return 1;
     }
     if(remove(processedPath.c_str())==0) return 0;
@@ -456,13 +457,13 @@ int copyDirectory(std::string sourceDir, std::string destinationDirectory){
     stat(sourceDir.c_str(), &statBuff);
     const int d = mkdir(destinationDirectory.c_str(), statBuff.st_mode);
     if (d==-1){
-        osd.commandStatus="Error creating directory!"+destinationDirectory;
+        osd.commandStatus="\x1b[91mError creating directory!\x1b[0m"+destinationDirectory;
         return 1;
     }
 
     DIR* dir = opendir(sourceDir.c_str());
     if(dir==NULL) {
-        osd.commandStatus="Directory doesn't exist";
+        osd.commandStatus="\x1b[91mDirectory doesn't exist\x1b[0m";
         return 1;
     }
     struct dirent* entity;
@@ -478,7 +479,7 @@ int copyDirectory(std::string sourceDir, std::string destinationDirectory){
                 if(copyDirectory(currSource, currDestination)==1) return 1;
             }else{
                 if(copyfiles({currSource}, destinationDirectory)==1){
-                    osd.commandStatus="copying interuppted";
+                    osd.commandStatus="\x1b[91mcopying interuppted\x1b[0m";
                     return 1;
                 }
             }
@@ -573,12 +574,12 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
         char *buffer[128];
 
         if ((inRef = open(sourceFile.c_str(), O_RDONLY)) == -1){
-            osd.commandStatus="Failed to open sourcefile";
+            osd.commandStatus="\x1b[91mFailed to open sourcefile\x1b[0m";
             return 1;
         }
 
         if ((outRef = open(destinationDirectory.c_str(), O_CREAT | O_APPEND | O_RDWR, 0666)) == -1){
-            osd.commandStatus="Failed to open newfile";
+            osd.commandStatus="\x1b[91mFailed to open newfile\x1b[0m";
             return 1;
         }
 
@@ -614,13 +615,13 @@ int renameObject(std::string sourceFile, std::string newName){
 
 int copyfiles(std::vector<std::string> sourcefiles, std::string destinationDirectory){
     if(sourcefiles.size()==0){
-        osd.commandStatus="Provide the source file for successful operation";
+        osd.commandStatus="\x1b[91mProvide the source file for successful operation\x1b[0m";
         return 1;
     }
     for(std::string sourcefile : sourcefiles){
         std::string sourceName=getSourceName(sourcefile);
         if(sourceName==".." || sourceName=="."){
-            osd.commandStatus="Dont use .. or . as source during copying or moving files.";
+            osd.commandStatus="\x1b[91mDont use .. or . as source during copying or moving files.\x1b[0m";
             return 1;
         }
         // std::cout<<sourcefile<<" -to- "<<destinationDirectory+"/"+sourceName<<"\n";
@@ -641,9 +642,9 @@ int movefiles(std::vector<std::string> sourcefiles, std::string destinationDirec
         struct stat statBuff;
         stat(file.c_str(), &statBuff);
         if(S_ISDIR(statBuff.st_mode)){
-            if(deleteDirectory(file)==1) osd.commandStatus="error in deleting directory";
+            if(deleteDirectory(file)==1) osd.commandStatus="\x1b[91merror in deleting directory\x1b[0m";
         }else{
-            if(deleteFile(file)==1) osd.commandStatus="error in deleting file";
+            if(deleteFile(file)==1) osd.commandStatus="\x1b[91merror in deleting file\x1b[0m";
         }
     }
     return status;
@@ -652,19 +653,18 @@ int movefiles(std::vector<std::string> sourcefiles, std::string destinationDirec
 int createfile(std::string name, mode_t perms){
     int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
     if (fd >= 0) {
-        std::cout<<"done"<<"\n";
-        return fd;
+        return 0;
     } else {
-        std::cout<<"error perms"<<"\n";
+        osd.commandStatus="\x1b[91merror in permissions\x1b[0m";
     }
-    return -1;
+    return 1;
 }
 
 int createfile(std::string name, std::string destinationDirectory){
     mode_t perms = S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH; 
     int fd = open(name.c_str(), O_CREAT|O_EXCL, perms);
     if (fd < 0) {
-        osd.commandStatus="\x1b[Kfailed!";
+        osd.commandStatus="\x1b[91mfailed!\x1b[0m";
         return 1;
     } 
 
@@ -673,7 +673,7 @@ int createfile(std::string name, std::string destinationDirectory){
 
     copyfiles({sourceFile}, destinationDirectory);
     remove(sourceFile.c_str());
-    osd.commandStatus="created";
+    osd.commandStatus="\x1b[92mcreated\x1b[0m";
     return 0;
 }
 
@@ -683,10 +683,10 @@ int createDirectory(std::string name, std::string destinationDirectory){
     mode_t perms = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     int d = mkdir(path.c_str(), perms);
     if (d==-1){
-        osd.commandStatus="error creating directory";
+        osd.commandStatus="\x1b[91merror creating directory\x1b[0m";
         return 1;
     }
-    osd.commandStatus="created folder";
+    osd.commandStatus="\x1b[92mcreated folder\x1b[0m";
     return 0;
 }
 
@@ -730,6 +730,13 @@ std::string getProcessedDirectoryFilePath(std::string destinationDirectory){
 }
 
 void gotoFunction(std::string destinationDirectory){
+    int d;
+    if((d = open(getProcessedDirectoryFilePath(destinationDirectory).c_str(), O_RDONLY))==-1){
+        osd.commandStatus="\x1b[91mDirectory doesnt exist\x1b[0m";
+        close(d);
+        return;
+    }
+
     currDirDet.bwdHistory.push(osd.d);
     if(getProcessedDirectoryFilePath(destinationDirectory)=="failed") return;
     else osd.d=getProcessedDirectoryFilePath(destinationDirectory);
@@ -906,7 +913,7 @@ void executeQuit(){
     std::vector<std::string> components;
     int start=0;
     for(int i=0; i<n; i++){
-        if(command[start]==' ') return {{"invalid command"}};
+        if(command[start]==' ') return {{"\x1b[91minvalid command\x1b[0m"}};
         if(command[i]=='~' && i+1<n-1 && command[i+1]=='/'){
             start=i+2;
             i+=2;
@@ -963,9 +970,9 @@ void executeCommand(){
                 // destinationDirectory=osd.d+"/"+destinationDirectory;
 
                 if(components[0]=="copy" ){
-                    if(copyfiles(sourcefiles, destinationDirectory)==0) osd.commandStatus="executed!";
+                    if(copyfiles(sourcefiles, destinationDirectory)==0) osd.commandStatus="\x1b[92mexecuted!\x1b[0m";
                 }else if(components[0]=="move" ){
-                    if(movefiles(sourcefiles, destinationDirectory)==0) osd.commandStatus="executed!";
+                    if(movefiles(sourcefiles, destinationDirectory)==0) osd.commandStatus="\x1b[92mexecuted!\x1b[0m";
                 }
             }else if(components[0]=="rename"){
                 std::string sourceFile=osd.d+"/"+components[1];
@@ -974,11 +981,11 @@ void executeCommand(){
                     newName+=components[i];
                     if(i!=n-1)newName+=" ";
                 }
-                if(renameObject(sourceFile, newName)!=0) osd.commandStatus="failed!";
-                else osd.commandStatus="executed!";
+                if(renameObject(sourceFile, newName)!=0) osd.commandStatus="\x1b[91mfailed!\x1b[0m";
+                else osd.commandStatus="\x1b[92mexecuted!\x1b[0m";
             }else if(components[0]=="create_file"){
                 if(components.size()>=3) createfile(components[1], components[2]);
-                else osd.commandStatus="invalid command";
+                else osd.commandStatus="\x1b[91minvalid command\x1b[0m";
             }else if(components[0]=="delete_file"){
                 if(components.size()>=2) {
                     std::vector<std::string> sourcefiles;
@@ -987,10 +994,10 @@ void executeCommand(){
                         std::string sourceFile=components[i];
                         sourcefiles.push_back(sourceFile);
                     }
-                    if(deleteFiles(sourcefiles)==0) osd.commandStatus="deleted";
-                    else osd.commandStatus="error in deleting";
+                    if(deleteFiles(sourcefiles)==0) osd.commandStatus="\x1b[92mdeleted\x1b[0m";
+                    else osd.commandStatus="\x1b[91merror in deleting\x1b[0m";
                 }
-                else osd.commandStatus="invalid command";
+                else osd.commandStatus="\x1b[91minvalid command\x1b[0m";
             }else if(components[0]=="create_dir"){
                 if(components.size()>=3) createDirectory(components[1], getProcessedDirectoryFilePath(components[2]));
                 else osd.commandStatus="invalid command";
@@ -1002,7 +1009,7 @@ void executeCommand(){
                         std::string sourceDir=components[i];
                         sourcedirs.push_back(sourceDir);
                     }
-                    if(deleteDirs(sourcedirs)==0) osd.commandStatus="deleted";
+                    if(deleteDirs(sourcedirs)==0) osd.commandStatus="\x1b[92mdeleted\x1b[0m";
                     else osd.commandStatus="error in deleting";
                 } 
                 else osd.commandStatus="invalid command";
@@ -1021,7 +1028,7 @@ void executeCommand(){
                 else osd.commandStatus="invalid command";
             }
             else{
-                osd.commandStatus="\x1b[KInvalid Command!";
+                osd.commandStatus="\x1b[91mInvalid Command!\x1b[0m";
             }
         }
     }
