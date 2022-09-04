@@ -1023,8 +1023,8 @@ void executeCommand(){
                 gotoFunction(dir);
             }else if(components[0]=="search"){
                 if(components.size()>=2) {
-                    if(searchForObject(components[1], osd.d)) osd.commandStatus="TRUE";
-                    else osd.commandStatus="FALSE";
+                    if(searchForObject(components[1], osd.d)) osd.commandStatus="\x1b[92mTRUE\x1b[0m";
+                    else osd.commandStatus="\x1b[91mFALSE\x1b[0m";
                 }
                 else osd.commandStatus="invalid command";
             }
