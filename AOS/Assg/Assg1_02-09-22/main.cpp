@@ -571,7 +571,7 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
 
         int inRef;
         int outRef;
-        char *buffer[128];
+        char *buffer[8192];
 
         if ((inRef = open(sourceFile.c_str(), O_RDONLY)) == -1){
             osd.commandStatus="\x1b[91mFailed to open sourcefile\x1b[0m";
@@ -583,9 +583,10 @@ int copyfile(std::string sourceFile, std::string destinationDirectory){
             return 1;
         }
 
-        while ((read(inRef, buffer, sizeof(buffer))) != 0)
+        int sz;
+        while ((sz=read(inRef, buffer, sizeof(buffer))) > 0)
         {
-            write(outRef, buffer, sizeof(buffer));
+            write(outRef, buffer, sz);
             bzero(buffer, sizeof(buffer));
         }
 
