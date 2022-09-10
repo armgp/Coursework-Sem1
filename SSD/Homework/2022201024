@@ -1,0 +1,18 @@
+SSD Homework
+-------------------------------
+
+1. In social medias when we post contents like photos and videos,
+   we are given an option to make the post Public or Private.
+   This is a usecase of Public and Private scopes. If our post is public
+   any user will be able to see it and like or maybe comment on the post, 
+   on the other hand if we make the post private (usually the option can be seen as --only me--)
+   , only the user can see the post.
+   
+2. A privileged method can be found for example, in apps like Notion where a user can
+   create some text content and share the content to his friends. The friends will be
+   able to read his work, but won't be able to modify the content in any way.
+   
+3. A static scoped variable can be found in any app that keeps count of something.
+   For example snapchat keeps count of all the snaps you have sent, although each 
+   snap is sent to different people and also it keeps count of number of snaps you 
+   have sent to each person. This can  be acheived using static scoped variables.
