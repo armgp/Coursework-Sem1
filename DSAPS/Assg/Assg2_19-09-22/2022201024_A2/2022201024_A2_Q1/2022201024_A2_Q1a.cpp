@@ -1,6 +1,5 @@
 #include <iostream>
 #include<unordered_map>
-#include <set>
 using namespace std;
 
 struct Node {
@@ -39,6 +38,7 @@ void LRUcache::set(int key, int value){
         if(curr != head){
             curr->prev->next = curr->next;
             if(curr->next) curr->next->prev = curr->prev;
+            else tail = curr->prev;
             curr->next = head;
             curr->prev = NULL;
             head->prev = curr;
@@ -47,7 +47,7 @@ void LRUcache::set(int key, int value){
 
     }else if(cache.size()<capacity){
         cache[key]=value;
-        struct Node* newNode = (struct Node*) malloc(sizeof(struct Node));
+        struct Node* newNode = new Node;
         newNode->data = key;
         if(head==NULL){
             head = newNode;
@@ -64,7 +64,7 @@ void LRUcache::set(int key, int value){
         tail->data = key;
         if(capacity > 1){
             struct Node* temp = tail->prev;
-            tail->prev->next = NULL;
+            if(tail->prev) tail->prev->next = NULL;
             tail->prev = NULL;
             tail->next = head;
             head->prev = tail;
@@ -109,19 +109,37 @@ int LRUcache::get(int key){
     //   with the Least recently used element from the cache.
 
 int main(){
+    // int cap, q;
+    // cin>>cap>>q;
+    // LRUcache lc(cap);
+    // for(int i=0; i<q; i++){
+    //     int a,b,c;
+    //     cin>>a;
+    //     if(a==1){
+    //         cin>>b;
+    //         cout<<lc.get(b)<<"\n";
+    //     }else if(a==2){
+    //         cin>>b>>c;
+    //         lc.set(b, c);
+    //     }
+    // }
+
+
     int cap, q;
     cin>>cap>>q;
     LRUcache lc(cap);
     for(int i=0; i<q; i++){
-        int a,b,c;
+        string a;
+        int b,c;
         cin>>a;
-        if(a==1){
+        if(a=="GET"){
             cin>>b;
             cout<<lc.get(b)<<"\n";
-        }else if(a==2){
+        }else if(a=="SET"){
             cin>>b>>c;
             lc.set(b, c);
         }
     }
+
     return 0;
 }

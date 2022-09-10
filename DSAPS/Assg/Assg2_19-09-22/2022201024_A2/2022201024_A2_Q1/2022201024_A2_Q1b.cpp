@@ -64,7 +64,7 @@ void LFUcache::set(int key, int value){
 
     }else if(cache.size()<capacity){
         cache[key]=value;
-        struct Node* newNode = (struct Node*) malloc(sizeof(struct Node));
+        struct Node* newNode = new Node;
         newNode->data = key;
         newNode->calls++;
         if(head==NULL){
