@@ -109,21 +109,19 @@ int LRUcache::get(int key){
     //   with the Least recently used element from the cache.
 
 int main(){
-
-    LRUcache lc(4);
-    lc.set(1, 10);
-    lc.set(2, 20);
-    lc.set(3, 60);
-    lc.set(3, 30);
-    cout<<lc.get(1)<<" "<<lc.get(2)<<" "<<lc.get(3)<<"\n";
-
-    lc.set(4, 40);
-    lc.set(5, 50);
-    lc.get(1);
-    lc.get(2);
-    lc.get(3);
-    lc.get(4);
-    
-    cout<<lc.get(1)<<" "<<lc.get(2)<<" "<<lc.get(3)<<" "<<lc.get(4)<<" "<<lc.get(5);
+    int cap, q;
+    cin>>cap>>q;
+    LRUcache lc(cap);
+    for(int i=0; i<q; i++){
+        int a,b,c;
+        cin>>a;
+        if(a==1){
+            cin>>b;
+            cout<<lc.get(b)<<"\n";
+        }else if(a==2){
+            cin>>b>>c;
+            lc.set(b, c);
+        }
+    }
     return 0;
 }
