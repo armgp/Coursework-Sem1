@@ -3,14 +3,15 @@
 using namespace std;
 
 struct Node {
-   int data;
-   struct Node* next;
-   struct Node* prev;
+   int key=0;
+   int value=0;
+   struct Node* next=NULL;
+   struct Node* prev=NULL;
 };
 
 class LRUcache {
     int capacity;
-    unordered_map<int, int> cache;
+    unordered_map<int, Node*> cache;
     Node* head=NULL;
     Node* tail=NULL;
 
@@ -26,14 +27,8 @@ LRUcache::LRUcache(int c){
 
 void LRUcache::set(int key, int value){
     if(cache.find(key)!=cache.end()){
-        cache[key]=value;
-        Node* curr = head;
-        while(curr!=NULL){
-            if(curr->data == key){
-                break;
-            }
-            curr = curr->next;
-        }
+        Node* curr = cache[key];
+        curr->value = value;
 
         if(curr != head){
             curr->prev->next = curr->next;
@@ -46,9 +41,10 @@ void LRUcache::set(int key, int value){
         }
 
     }else if(cache.size()<capacity){
-        cache[key]=value;
-        struct Node* newNode = new Node;
-        newNode->data = key;
+        Node* newNode = new Node;
+        newNode->key = key;
+        newNode->value = value;
+        cache[key]=newNode;
         if(head==NULL){
             head = newNode;
             tail = newNode;
@@ -58,10 +54,11 @@ void LRUcache::set(int key, int value){
             head = newNode;
         }
     }else if(cache.size() == capacity){
-        int rmKey = tail->data;
+        int rmKey = tail->key;
         cache.erase(rmKey);
-        cache[key] = value;
-        tail->data = key;
+        tail->key = key;
+        tail->value = value;
+        cache[key] = tail;
         if(capacity > 1){
             struct Node* temp = tail->prev;
             if(tail->prev) tail->prev->next = NULL;
@@ -77,13 +74,8 @@ void LRUcache::set(int key, int value){
 int LRUcache::get(int key){
     if(cache.find(key)==cache.end()) return -1;
 
-    Node* curr = head;
-    while(curr!=NULL){
-        if(curr->data == key){
-            break;
-        }
-        curr = curr->next;
-    }
+    Node* curr = cache[key];
+    
     if(curr != head){
         if(curr==tail) tail = curr->prev;
         curr->prev->next = curr->next;
@@ -95,47 +87,21 @@ int LRUcache::get(int key){
         
     }
 
-    return cache[key];
+    return curr->value;
 
 }
 
-    //For LRU Cache
-    //["LRUCache", "set", "set", "get", "set", "get", "set", "get", "get", "get"]
-    //[[2], [1, 1], [2, 2], [1], [3, 3], [2], [4, 4], [1], [3], [4]]
-    // ● constructor(capacity): Creates the cache with given capacity.
-    // ● get(key): Return the value associated with the key, if not present return -1.
-    // ● set(key, value): Insert a new key value pair in the cache or update if
-    //   already present. If the capacity of the cache is exceeded, then replace
-    //   with the Least recently used element from the cache.
-
 int main(){
-    // int cap, q;
-    // cin>>cap>>q;
-    // LRUcache lc(cap);
-    // for(int i=0; i<q; i++){
-    //     int a,b,c;
-    //     cin>>a;
-    //     if(a==1){
-    //         cin>>b;
-    //         cout<<lc.get(b)<<"\n";
-    //     }else if(a==2){
-    //         cin>>b>>c;
-    //         lc.set(b, c);
-    //     }
-    // }
-
-
     int cap, q;
     cin>>cap>>q;
     LRUcache lc(cap);
     for(int i=0; i<q; i++){
-        string a;
-        int b,c;
+        int a,b,c;
         cin>>a;
-        if(a=="GET"){
+        if(a==1){
             cin>>b;
             cout<<lc.get(b)<<"\n";
-        }else if(a=="SET"){
+        }else if(a==2){
             cin>>b>>c;
             lc.set(b, c);
         }

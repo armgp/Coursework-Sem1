@@ -6,8 +6,8 @@ using namespace std;
 struct Node {
    int data;
    int calls=0;
-   struct Node* next;
-   struct Node* prev;
+   struct Node* next=NULL;
+   struct Node* prev=NULL;
 };
 
 class LFUcache {
@@ -64,7 +64,7 @@ void LFUcache::set(int key, int value){
 
     }else if(cache.size()<capacity){
         cache[key]=value;
-        struct Node* newNode = new Node;
+        Node* newNode = new Node;
         newNode->data = key;
         newNode->calls++;
         if(head==NULL){
