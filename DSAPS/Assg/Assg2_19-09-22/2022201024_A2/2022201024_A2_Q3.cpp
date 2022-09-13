@@ -211,6 +211,42 @@ template <typename T> void occurenceCount(Node<T>* root, T e, int& count){
     }
 }
 
+template <typename T> T lowerBound(Node<T>* root, T e){
+    if(root->val==e) return e;
+    if(root->left==NULL && root->right==NULL){
+        return root->val;
+    }
+    int a;
+    if(e < root->val) a = lowerBound(root->left, e);
+    else if(e > root->val) a = lowerBound(root->right, e);
+
+    if(a==e) return e;
+    
+    if(root->val>e && a<e) return root->val;
+    else if(root->val>e && a>e){
+        if(root->val-e < a-e) return root->val;
+        return a;
+    }else if(root->val<e && a>e) return a;
+    return 0;
+}
+
+template <typename T> T upperBound(Node<T>* root, T e){
+    if(root->left==NULL && root->right==NULL){
+        if(root->val<=e) return 0;
+        return root->val;
+    }
+    if(root->val<=e) return upperBound(root->right, e);
+    else{
+        int a = upperBound(root->left, e);
+        int b = root->val;
+        
+        if(a>e) return min(a,b);
+        else if(a==0) return b;
+    }
+
+    return 0;
+}
+
 //member functions
 template <typename T> void AVLtree<T>::insert(T e){
     root = insertNode(root, e);
@@ -231,11 +267,11 @@ template <typename T> int AVLtree<T>::count_occurence(T e){
 }
 
 template <typename T> T AVLtree<T>::lower_bound(T e){
- 
+    return lowerBound(root, e);
 }
 
 template <typename T> T AVLtree<T>::upper_bound(T e){
- 
+    return upperBound(root, e);
 }
 
 template <typename T> T AVLtree<T>::closest_element(T e){
@@ -305,6 +341,12 @@ int main(){
 
     n=50;
     cout<<n<<" occurs "<<tree.count_occurence(n)<<" times. \n";
+
+    n=62;
+    cout<<"The lower_bound of "<<n<<" = "<<tree.lower_bound(n)<<"\n";
+
+    n=54;
+    cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
 
     return 0;
 } 

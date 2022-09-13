@@ -13,3 +13,5 @@
             └──43(0)
 89 is present
 50 occurs 3 times. 
+The lower_bound of 62 = 78
+The upper_bound of 54 = 61
