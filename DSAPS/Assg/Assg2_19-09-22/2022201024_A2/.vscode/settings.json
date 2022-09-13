@@ -18,6 +18,18 @@
         "valarray": "cpp",
         "chrono": "cpp",
         "string": "cpp",
-        "cmath": "cpp"
+        "cmath": "cpp",
+        "*.tcc": "cpp",
+        "optional": "cpp",
+        "ratio": "cpp",
+        "system_error": "cpp",
+        "functional": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp",
+        "variant": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "numbers": "cpp",
+        "ostream": "cpp"
     }
 }
