@@ -247,6 +247,21 @@ template <typename T> T upperBound(Node<T>* root, T e){
     return 0;
 }
 
+template <typename T> T closestElement(Node<T>* root, T e){
+    if(root->val == e) return e;
+    if(root->left == NULL && root->right == NULL) return root->val;
+    int a;
+    if(e < root->val){
+        if(root->left) a = closestElement(root->left, e);
+        else a = root->val;
+    }else if(e > root->val){
+        if(root->right) a = closestElement(root->right, e);
+        else a = root->val;
+    }
+    if(abs(a-e) >= abs(root->val-e)) return root->val;
+    return a;
+}
+
 //member functions
 template <typename T> void AVLtree<T>::insert(T e){
     root = insertNode(root, e);
@@ -275,7 +290,7 @@ template <typename T> T AVLtree<T>::upper_bound(T e){
 }
 
 template <typename T> T AVLtree<T>::closest_element(T e){
- 
+    return closestElement(root, e);
 }
 
 template <typename T> T AVLtree<T>::Kth_largest(int k){
@@ -347,6 +362,9 @@ int main(){
 
     n=54;
     cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
+
+    n=45;
+    cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
 
     return 0;
 } 
