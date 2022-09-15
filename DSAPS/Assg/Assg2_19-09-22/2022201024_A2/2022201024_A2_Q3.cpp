@@ -6,6 +6,8 @@ public:
     T val;
     Node* left=NULL;
     Node* right=NULL;
+    int leftNodes=0;
+    int rightNodes=0;
     int height;
 };
 
@@ -262,6 +264,17 @@ template <typename T> T closestElement(Node<T>* root, T e){
     return a;
 }
 
+template <typename T> T kthLargest(Node<T>* root, int& k){
+    if(root == NULL) return T();
+    int a = kthLargest(root->right, k);
+    if(a!=T()) return a;
+    k--;
+    if(k==0) return root->val;
+    a = kthLargest(root->left, k);
+    if(a!=T()) return a;
+    return T();
+}
+
 //member functions
 template <typename T> void AVLtree<T>::insert(T e){
     root = insertNode(root, e);
@@ -294,7 +307,9 @@ template <typename T> T AVLtree<T>::closest_element(T e){
 }
 
 template <typename T> T AVLtree<T>::Kth_largest(int k){
- 
+    T res;
+    if(!(res = kthLargest(root, k))) cout<<"K should be less than the total number of nodes";
+    return res;
 }
 
 template <typename T> int AVLtree<T>::count_range(T eLeft, T eRight){
@@ -365,6 +380,9 @@ int main(){
 
     n=45;
     cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
+
+    int k = 14;
+    cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
 
     return 0;
 } 
