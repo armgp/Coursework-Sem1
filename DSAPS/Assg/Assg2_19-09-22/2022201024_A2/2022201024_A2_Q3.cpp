@@ -46,7 +46,13 @@ template <typename T> Node<T>* rightRotate(Node<T>* root){
     Node<T>* x = root->left;
     Node<T>* y = x->right;
     root->left = y;
+    if(y) root->leftNodes = 1 + y->leftNodes + y->rightNodes;
+    else root->leftNodes=0;
+
     x->right = root;
+    if(root) x->rightNodes = 1 + root->leftNodes + root->rightNodes;
+    else x->rightNodes=0;
+
 
     int lh=-1, rh=-1;
     if(root->right) rh = root->right->height;
@@ -65,7 +71,12 @@ template <typename T> Node<T>* leftRotate(Node<T>* root){
     Node<T>* x = root->right;
     Node<T>* y = x->left;
     root->right = y;
+    if(y) root->rightNodes = 1 + y->leftNodes + y->rightNodes;
+    else root->rightNodes = 0;
+
     x->left = root;
+    if(root) x->leftNodes = 1 + root->leftNodes + root->rightNodes;
+    else x->leftNodes=  0;
 
     int lh=-1, rh=-1;
     if(root->right) rh = root->right->height;
@@ -124,8 +135,14 @@ template <typename T> Node<T>* insertNode(Node<T>* root, T e){
         return root;
     }
 
-    if(e > root->val) root->right = insertNode(root->right, e);
-    else root->left = insertNode(root->left, e);
+    if(e > root->val) {
+        root->rightNodes++;
+        root->right = insertNode(root->right, e);
+    }
+    else {
+        root->leftNodes++;
+        root->left = insertNode(root->left, e);
+    }
 
     int lh=-1, rh=-1;
     if(root->right) rh = root->right->height;
@@ -138,12 +155,26 @@ template <typename T> Node<T>* insertNode(Node<T>* root, T e){
 
 template <typename T> Node<T>* deleteNode(Node<T>* root,T e){
     if(root == NULL) return root;
-    else if(e > root->val) root->right = deleteNode(root->right, e);
-    else if(e < root->val) root->left = deleteNode(root->left, e);
+    else if(e > root->val) {
+        root->right = deleteNode(root->right, e);
+        if(root->right == NULL) root->rightNodes--;
+        else root->rightNodes = 1 + root->right->leftNodes + root->right->rightNodes;
+    }
+
+    else if(e < root->val) {
+        root->left = deleteNode(root->left, e);
+        if(root->left == NULL) root->leftNodes--;
+        else root->leftNodes = 1 + root->left->leftNodes + root->left->rightNodes;
+    }
     else if(root->val == e){
         //to delete same value nodes(always on left)
         root->left = deleteNode(root->left, e);
+        if(root->left == NULL) root->leftNodes--;
+        else root->leftNodes = 1 + root->left->leftNodes + root->left->rightNodes;
+
         root->right = deleteNode(root->right, e);
+        if(root->right == NULL) root->rightNodes--;
+        else root->rightNodes = 1 + root->right->leftNodes + root->right->rightNodes;
 
         if(root->right == NULL && root->left==NULL){
             root=NULL;
@@ -157,6 +188,8 @@ template <typename T> Node<T>* deleteNode(Node<T>* root,T e){
             }
             root->val=maxValNode->val;
             root->left = deleteNode(root->left, maxValNode->val);
+            if(root->left == NULL) root->leftNodes--;
+            else root->leftNodes = 1 + root->left->leftNodes + root->left->rightNodes;
         }else {
             Node<T>* curr = root->right;
             Node<T>* minValNode = curr;
@@ -166,6 +199,8 @@ template <typename T> Node<T>* deleteNode(Node<T>* root,T e){
             }
             root->val=minValNode->val;
             root->right = deleteNode(root->right, minValNode->val);
+            if(root->right == NULL) root->rightNodes--;
+            else root->rightNodes = 1 + root->right->leftNodes + root->right->rightNodes;
         }
     }
 
@@ -264,15 +299,19 @@ template <typename T> T closestElement(Node<T>* root, T e){
     return a;
 }
 
-template <typename T> T kthLargest(Node<T>* root, int& k){
-    if(root == NULL) return T();
-    int a = kthLargest(root->right, k);
-    if(a!=T()) return a;
-    k--;
-    if(k==0) return root->val;
-    a = kthLargest(root->left, k);
-    if(a!=T()) return a;
-    return T();
+template <typename T> T kthLargest(Node<T>* root, int k){
+    if(!root || k > 1 + root->leftNodes + root->rightNodes){
+        return T();
+    }
+    if(k == root->rightNodes+1) return root->val;
+    if(k > root->rightNodes+1){
+        return kthLargest(root->left, k-(root->rightNodes+1));
+    }
+    return kthLargest(root->right, k);
+}
+
+template <typename T> int countRange(Node<T>* root, T eLeft, T eRight){
+   
 }
 
 //member functions
@@ -307,13 +346,11 @@ template <typename T> T AVLtree<T>::closest_element(T e){
 }
 
 template <typename T> T AVLtree<T>::Kth_largest(int k){
-    T res;
-    if(!(res = kthLargest(root, k))) cout<<"K should be less than the total number of nodes";
-    return res;
+    return kthLargest(root, k);
 }
 
 template <typename T> int AVLtree<T>::count_range(T eLeft, T eRight){
- 
+    return countRange(root, T eLeft, T eRight);
 }
 
 
@@ -322,7 +359,7 @@ template <typename T> void printBT(const std::string& prefix, const Node<T>* nod
         cout << prefix;
         cout << (isRight ? "├──" : "└──" );
 
-        cout << node->val<<"("<<node->height<<")" << endl;
+        cout << node->val<<"("<<node->height<<", "<<node->leftNodes<<", "<<node->rightNodes<<")" << endl;
 
         printBT( prefix + (isRight ? "│   " : "    "), node->right, true);
         printBT( prefix + (isRight ? "│   " : "    "), node->left, false);
@@ -381,7 +418,7 @@ int main(){
     n=45;
     cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
 
-    int k = 14;
+    int k = 11;
     cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
 
     return 0;

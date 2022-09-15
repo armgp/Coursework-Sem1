@@ -1,19 +1,19 @@
-└──54(3)
-    ├──86(2)
-    │   ├──88(1)
-    │   │   ├──89(0)
-    │   └──78(1)
-    │       ├──83(0)
-    │       └──61(0)
-    └──46(2)
-        ├──50(1)
-        │   ├──50(0)
-        │   └──50(0)
-        └──44(1)
-            └──43(0)
+└──54(3, 6, 6)
+    ├──86(2, 3, 2)
+    │   ├──88(1, 0, 1)
+    │   │   ├──89(0, 0, 0)
+    │   └──78(1, 1, 1)
+    │       ├──83(0, 0, 0)
+    │       └──61(0, 0, 0)
+    └──46(2, 2, 3)
+        ├──50(1, 1, 1)
+        │   ├──50(0, 0, 0)
+        │   └──50(0, 0, 0)
+        └──44(1, 1, 0)
+            └──43(0, 0, 0)
 89 is present
 50 occurs 3 times. 
 The lower_bound of 62 = 78
 The upper_bound of 54 = 61
 The closest element to 45 is: 46
-The 14th largest element is: K should be less than the total number of nodes0
+The 11th largest element is: 46
