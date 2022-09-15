@@ -17,3 +17,4 @@ The lower_bound of 62 = 78
 The upper_bound of 54 = 61
 The closest element to 45 is: 46
 The 11th largest element is: 46
+No: of elements in the range (50, 78) = 6

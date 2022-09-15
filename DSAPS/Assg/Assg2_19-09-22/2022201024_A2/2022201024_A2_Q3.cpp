@@ -310,8 +310,28 @@ template <typename T> T kthLargest(Node<T>* root, int k){
     return kthLargest(root->right, k);
 }
 
-template <typename T> int countRange(Node<T>* root, T eLeft, T eRight){
+template <typename T> T largestElement(Node<T>* root){
+    return kthLargest(root, 1);
+}
+
+template <typename T> T smallestElement(Node<T>* root){
+    return kthLargest(root, 1+root->leftNodes+root->rightNodes);
+}
+
+template <typename T> int countRange(Node<T>* root, T eLeft, T eRight, T& se, T& le){
+   if(root == NULL || eLeft>eRight) return 0;
+   if(eLeft == eRight && root->val == eLeft) return 1;
+   if(root->val > eRight){
+    return countRange(root->left, eLeft, eRight, se, le);
+   }
+   if(root->val < eLeft){
+    return countRange(root->right, eLeft, eRight, se, le);
+   }
    
+   int totalNodes = 1+root->leftNodes+root->rightNodes;
+   int leftRange = countRange(root, se, eLeft-1, se, le);
+   int rightRange = countRange(root, eRight+1, le, se, le);
+   return totalNodes-(leftRange+rightRange);
 }
 
 //member functions
@@ -350,7 +370,9 @@ template <typename T> T AVLtree<T>::Kth_largest(int k){
 }
 
 template <typename T> int AVLtree<T>::count_range(T eLeft, T eRight){
-    return countRange(root, T eLeft, T eRight);
+    T se = smallestElement(root);
+    T le = largestElement(root);
+    return countRange(root, eLeft, eRight, se, le);
 }
 
 
@@ -420,6 +442,9 @@ int main(){
 
     int k = 11;
     cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
+
+    int st=50, ed=78;
+    cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed);
 
     return 0;
 } 
