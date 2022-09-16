@@ -3,7 +3,7 @@ using namespace std;
 
 template<typename T> struct Node {
 public:
-    T val;
+    T val = T();
     Node* left=NULL;
     Node* right=NULL;
     int count=1;
@@ -16,7 +16,7 @@ template<typename T> class AVLtree {
 
 private:
     Node<T>* root=NULL;
-    
+
     Node<T>* rightRotate(Node<T>* Root){
         Node<T>* x = Root->left;
         Node<T>* y = x->right;
@@ -216,33 +216,34 @@ private:
     }
 
     T lowerBound(Node<T>* Root, T e){
+        if(Root == NULL) return T();
         if(Root->val==e) return e;
+
         if(Root->left==NULL && Root->right==NULL){
+            if(Root->val >= e) return Root->val;
+            return T();
+        }
+        
+        if(Root->val<e) return lowerBound(Root->right, e);
+        if(Root->val>e){
+            T a = lowerBound(Root->left, e);
+            if(a!=T()) return a;
             return Root->val;
         }
-        int a;
-        if(e < Root->val) a = lowerBound(Root->left, e);
-        else if(e > Root->val) a = lowerBound(Root->right, e);
-
-        if(a==e) return e;
         
-        if(Root->val>e && a<e) return Root->val;
-        else if(Root->val>e && a>e){
-            if(Root->val-e < a-e) return Root->val;
-            return a;
-        }else if(Root->val<e && a>e) return a;
-        return 0;
+        return T();
     }
 
     T upperBound(Node<T>* Root, T e){
+        if(Root == NULL) return T();
         if(Root->left==NULL && Root->right==NULL){
             if(Root->val<=e) return T();
             return Root->val;
         }
         if(Root->val<=e) return upperBound(Root->right, e);
         else{
-            int a = upperBound(Root->left, e);
-            int b = Root->val;
+            T a = upperBound(Root->left, e);
+            T b = Root->val;
             
             if(a>e) return a;
             else return b;
@@ -254,7 +255,7 @@ private:
     T closestElement(Node<T>* Root, T e){
         if(Root->val == e) return e;
         if(Root->left == NULL && Root->right == NULL) return Root->val;
-        int a;
+        T a;
         if(e < Root->val){
             if(Root->left) a = closestElement(Root->left, e);
             else a = Root->val;
@@ -292,24 +293,24 @@ private:
     }
 
     int countRange(Node<T>* Root, T eLeft, T eRight){
-    if(Root == NULL || eLeft>eRight) return 0;
-    if(eLeft == eRight && Root->val == eLeft) return Root->count;
-    if(Root->val > eRight){
-        return countRange(Root->left, eLeft, eRight);
-    }
-    if(Root->val < eLeft){
-        return countRange(Root->right, eLeft, eRight);
-    }
-    if(Root->val == eRight){
-        return Root->count + countRange(Root->left, eLeft, eRight);
-    }
-    if(Root->val == eLeft){
-        return Root->count + countRange(Root->right, eLeft, eRight);
-    }
-    
-    int leftRange = countRange(Root, eLeft, Root->val);
-    int rightRange = countRange(Root, Root->val+1, eRight);
-    return (leftRange+rightRange);
+        if(Root == NULL || eLeft>eRight) return 0;
+        if(eLeft == eRight && Root->val == eLeft) return Root->count;
+        if(Root->val > eRight){
+            return countRange(Root->left, eLeft, eRight);
+        }
+        if(Root->val < eLeft){
+            return countRange(Root->right, eLeft, eRight);
+        }
+        if(Root->val == eRight){
+            return Root->count + countRange(Root->left, eLeft, eRight);
+        }
+        if(Root->val == eLeft){
+            return Root->count + countRange(Root->right, eLeft, eRight);
+        }
+        
+        int leftRange = countRange(Root, eLeft, Root->val);
+        int rightRange = countRange(Root, Root->val, eRight);
+        return (leftRange+rightRange-Root->count);
     }
 
 
@@ -328,9 +329,27 @@ public:
 };
 
 //utils
+
 template <typename T> Node<T>* AVLtree<T>::getRoot(){
     return root;
 }
+
+template <typename T> void printBT(const std::string& prefix, const Node<T>* node, bool isRight){
+    if( node != nullptr ){
+        cout << prefix;
+        cout << (isRight ? "├──" : "└──" );
+
+        cout << node->val<<"("<<node->height<<", "<<node->leftNodes<<", "<<node->rightNodes<<", "<<node->count<<")" << endl;
+
+        printBT( prefix + (isRight ? "│   " : "    "), node->right, true);
+        printBT( prefix + (isRight ? "│   " : "    "), node->left, false);
+    }
+}
+
+template <typename T>  void printBT(const Node<T>* node){
+    printBT("", node, false);    
+}
+
 
 
 //member functions
@@ -372,29 +391,45 @@ template <typename T> int AVLtree<T>::count_range(T eLeft, T eRight){
     return countRange(root, eLeft, eRight);
 }
 
+class myclass{
+public:
+    int a;
+    string b;
+    myclass(){};
+    myclass(int A, string B){
+        a=A;
+        b=B;
+    };
+    int getA() {return a;}
+    string getB() {return b;}
 
-template <typename T> void printBT(const std::string& prefix, const Node<T>* node, bool isRight){
-    if( node != nullptr ){
-        cout << prefix;
-        cout << (isRight ? "├──" : "└──" );
-
-        cout << node->val<<"("<<node->height<<", "<<node->leftNodes<<", "<<node->rightNodes<<", "<<node->count<<")" << endl;
-
-        printBT( prefix + (isRight ? "│   " : "    "), node->right, true);
-        printBT( prefix + (isRight ? "│   " : "    "), node->left, false);
+    bool operator<(myclass const &c){
+        return a<c.a;
     }
+    bool operator>(myclass const &c){
+        return a>c.a;
+    }
+    bool operator<=(myclass const &c){
+        return a<=c.a;
+    }
+    bool operator>=(myclass const &c){
+        return a>=c.a;
+    }
+    bool operator==(myclass const &c){
+        return a<c.a;
+    }
+    bool operator!=(myclass const &c){
+        return a!=c.a;
+    }
+};
+
+ostream &operator<<(ostream &out, myclass const &c){
+    out<<"("<<c.a<<", "<<c.b<<")";
+    return out;
 }
 
-template <typename T>  void printBT(const Node<T>* node){
-    printBT("", node, false);    
-}
-
-
-int main(){
+void intTest(){
     AVLtree<int> tree;
-    // 54 44 86 43 46 78 88 N N N 50 61 83 N 89
-    // 8
-    // 46 86 88 61 89 78 54 83
     tree.insert(54);
     tree.insert(44);
     tree.insert(86);
@@ -409,17 +444,16 @@ int main(){
     tree.insert(89);
     tree.insert(50);
     
+    tree.Delete(50);
+    tree.Delete(86);
+    tree.Delete(88);
+    tree.Delete(61);
+    tree.Delete(89);
+    tree.Delete(100);
+    tree.Delete(54);
+    tree.Delete(83);
 
-    // tree.Delete(46);
-    // tree.Delete(86);
-    // tree.Delete(88);
-    // tree.Delete(61);
-    // tree.Delete(89);
-    // tree.Delete(78);
-    // tree.Delete(54);
-    // tree.Delete(83);
-
-    printBT(tree.getRoot());
+     printBT(tree.getRoot());
     
     int n=89;
     if(tree.search(n)) cout<<n<<" is present"<<"\n";
@@ -442,6 +476,173 @@ int main(){
 
     int st=50, ed=83;
     cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed);
+}
 
+void floatTest(){
+    AVLtree<float> tree;
+    tree.insert(54.77);
+    tree.insert(43.22);
+    tree.insert(8.4);
+    tree.insert(23);
+    tree.insert(90.32);
+    tree.insert(50.00);
+    tree.insert(78);
+    tree.insert(90.43);
+    tree.insert(50.01);
+    tree.insert(61.02);
+    tree.insert(23);
+    tree.insert(8.4);
+    tree.insert(12.11);
+    
+    tree.Delete(8.4);
+    tree.Delete(54.77);
+    tree.Delete(61.02);
+    tree.Delete(23);
+
+    printBT(tree.getRoot());
+    
+    float n=90.43;
+    if(tree.search(n)) cout<<n<<" is present"<<"\n";
+    else cout<<n<<" is not present"<<"\n";
+
+    n=8.4;
+    cout<<n<<" occurs "<<tree.count_occurence(n)<<" times. \n";
+
+    n=23.3;
+    cout<<"The lower_bound of "<<n<<" = "<<tree.lower_bound(n)<<"\n";
+
+    n=8.45;
+    cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
+
+    n=33;
+    cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
+
+    int k = 4;
+    cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
+
+    int st=11.11, ed=91.11;
+    cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed);
+}
+
+void stringTest(){
+    AVLtree<string> stree;
+    
+    stree.insert("54");
+    stree.insert("44");
+    stree.insert("86");
+    stree.insert("43");
+    stree.insert("46");
+    stree.insert("50");
+    stree.insert("78");
+    stree.insert("88");
+    stree.insert("50");
+    stree.insert("61");
+    stree.insert("83");
+    stree.insert("89");
+    stree.insert("50");
+    
+    stree.Delete("50");
+    stree.Delete("86");
+    stree.Delete("88");
+    stree.Delete("61");
+    stree.Delete("89");
+    stree.Delete("100");
+    stree.Delete("54");
+    stree.Delete("83");
+
+     printBT(stree.getRoot());
+
+
+    string n="89";
+    if(stree.search(n)) cout<<n<<" is present"<<"\n";
+    else cout<<n<<" is not present"<<"\n";
+
+    n="50";
+    cout<<n<<" occurs "<<stree.count_occurence(n)<<" times. \n";
+
+    n="62";
+    cout<<"The lower_bound of "<<n<<" = "<<stree.lower_bound(n)<<"\n";
+
+    n="62";
+    cout<<"The upper_bound of "<<n<<" = "<<stree.upper_bound(n)<<"\n";
+
+    int k = 11;
+    cout<<"The "<<k<<"th largest element is: "<<stree.Kth_largest(k)<<"\n"; 
+
+    string st="50", ed="83";
+    cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<stree.count_range(st, ed);
+
+}
+
+void classTest(){
+    AVLtree<myclass> ctree;
+    
+    myclass c1(54, "fiftyfour");
+    ctree.insert(c1);
+
+    myclass c2(44, "fourtyfour");
+    ctree.insert(c2);
+
+    myclass c3(86, "eightysix");
+    ctree.insert(c3);
+
+    myclass c4(43, "fourtythree");
+    ctree.insert(c4);
+
+    myclass c5(46, "fourtysix");
+    ctree.insert(c5);
+
+    myclass c6(50, "fifty");
+    ctree.insert(c6);
+
+    myclass c7(78, "seventyeight");
+    ctree.insert(c7);
+
+    myclass c8(88, "eightyeight");
+    ctree.insert(c8);
+
+    myclass c9(50, "fifty");
+    ctree.insert(c9);
+
+    myclass c10(61, "sixtyone");
+    ctree.insert(c10);
+
+    myclass c11(83, "eightythree");
+    ctree.insert(c11);
+
+    myclass c12(89, "eightynine");
+    ctree.insert(c12);
+
+    myclass c13(50, "fifty");
+    ctree.insert(c13);
+
+    printBT(ctree.getRoot());
+    
+   
+    int n = 89;
+    if(ctree.search(c12)) cout<<c12.getA()<<" is present"<<"\n";
+    else cout<<n<<" is not present"<<"\n";
+
+    n=50;
+    cout<<n<<" occurs "<<ctree.count_occurence(c13)<<" times. \n";
+
+    n=62;
+    cout<<"The lower_bound of "<<n<<" = "<<ctree.lower_bound(c10)<<"\n";
+
+    n=54;
+    cout<<"The upper_bound of "<<n<<" = "<<ctree.upper_bound(c1)<<"\n";
+
+    int k = 11;
+    cout<<"The "<<k<<"th largest element is: "<<ctree.Kth_largest(k)<<"\n"; 
+
+    int st=50, ed=83;
+    cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<ctree.count_range(c9, c11);
+}
+
+int main(){
+    // intTest();
+    floatTest();
+    // stringTest();
+    // classTest();
     return 0;
 } 

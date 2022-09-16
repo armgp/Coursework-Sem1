@@ -1,18 +1,14 @@
-└──78(3, 8, 4, 1)
-    ├──86(2, 1, 2, 1)
-    │   ├──88(1, 0, 1, 1)
-    │   │   ├──89(0, 0, 0, 1)
-    │   └──83(0, 0, 0, 1)
-    └──46(2, 2, 5, 1)
-        ├──54(1, 3, 1, 1)
-        │   ├──61(0, 0, 0, 1)
-        │   └──50(0, 2, 0, 3)
-        └──44(1, 1, 0, 1)
-            └──43(0, 0, 0, 1)
-89 is present
-50 occurs 3 times. 
-The lower_bound of 62 = 78
-The upper_bound of 54 = 61
-The closest element to 45 is: 46
-The 11th largest element is: 46
-No: of elements in the range (50, 83) = 7
+└──78(3, 5, 2, 1)
+    ├──90.32(1, 0, 1, 1)
+    │   ├──90.43(0, 0, 0, 1)
+    └──43.22(2, 2, 2, 1)
+        ├──50(1, 0, 1, 1)
+        │   ├──50.01(0, 0, 0, 1)
+        └──12.11(0, 1, 0, 1)
+90.43 is present
+8.4 occurs 0 times. 
+The lower_bound of 23.3 = 43.22
+The upper_bound of 8.45 = 12.11
+The closest element to 33 is: 43.22
+The 4th largest element is: 50.01
+No: of elements in the range (11, 91) = 7
