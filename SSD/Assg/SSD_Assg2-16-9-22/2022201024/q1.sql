@@ -37,8 +37,6 @@ SET Date_Of_Birth = STR_TO_DATE(@Date_Of_Birth, '%m/%d/%Y'), Time_Of_Birth = STR
 
 select * from person;
 
- 
-
 -- ----------------------------------------------------#Q1-(a)----------------------------------------------------------------------------------------------------
 DROP PROCEDURE newHikeSalary;
 DROP TABLE hike2022;
@@ -219,14 +217,13 @@ BEGIN
         
         IF gdetail='F' AND @workExp>10 THEN
 			SET @nr = 'DC';
+            INSERT INTO PersonTransfer (EmpIDFK, FirstName, LastName, Gender, DateofJoining, CurrentRegion, NewRegion)
+			VALUES (empiddetail, fndetail, lndetail, gdetail, dojdetail, crdetail, @nr);
 		ELSEIF gdetail='M' AND @workExp>20 THEN
 			SET @nr = 'Capitol';
-		ELSE
-			SET @nr = crdetail;
+            INSERT INTO PersonTransfer (EmpIDFK, FirstName, LastName, Gender, DateofJoining, CurrentRegion, NewRegion)
+			VALUES (empiddetail, fndetail, lndetail, gdetail, dojdetail, crdetail, @nr);
 		END IF;
-        
-        INSERT INTO PersonTransfer (EmpIDFK, FirstName, LastName, Gender, DateofJoining, CurrentRegion, NewRegion)
-		VALUES (empiddetail, fndetail, lndetail, gdetail, dojdetail, crdetail, @nr);
 	END LOOP getDetail;
     
 	CLOSE details;
@@ -234,4 +231,6 @@ END$$
 DELIMITER ;
 
 CALL getTransferData(); 
-select * from PersonTransfer ORDER BY FirstName ASC;
+select * from PersonTransfer;
+
+

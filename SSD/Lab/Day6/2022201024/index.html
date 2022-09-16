@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>My Website</title>
+    <link rel="stylesheet" href="./style.css">
+    <link rel="icon" href="./favicon.ico" type="image/x-icon">
+  </head>
+  <body onkeydown="keydown(event)">
+    <main>
+      
+    </main>
+	<script src="index.js"></script>
+
+    <form>
+        <div class="container">
+            <div class="dets">
+            <label for="text"><b>Manager Name: </b></label>
+            <input id="manname" type="text" placeholder="John Doe" name="mn" required>
+            </div>
+
+            <div class="dets">
+            <label for="email"><b>Group Email: </b></label>
+            <input id="email" type="text" placeholder="example@something.com" name="email" onfocusout="validateemail()" required>
+            </div>
+
+            <div class="dets">
+            <label for="text"><b>Server Username: </b></label>
+            <input id="servername" type="text" placeholder="John Doe2" name="sn" onkeyup="validatesname()" onfocusout="clearmsg()" required>
+            <div id="msg"></div>
+            </div>
+
+            <div class="dets">
+            <label for="psw"><b>Server Password:    </b></label>
+            <input id="psw" type="password" placeholder="********" name="psw" required>
+            </div>
+
+            <div class="dets">
+            <label for="psw-repeat"><b>Confirm Password:  </b></label>
+            <input id="cfmpsw" type="password" placeholder="********" name="psw-repeat" onfocusout="checkPassword()" required>
+            </div>
+
+            <div class="dets">
+            <label for="text"><b>Team Lead: </b></label>
+            <select id="tl" name="tl" required>
+                <option disabled selected value> -- select an option -- </option>
+                <option value="divakaran">Divakaran</option>
+                <option value="shambu">Shambu</option>
+                <option value="peedambaran">Peedambaran</option>
+                <option value="chakkasasi">Chakka Sasi</option>
+                <option value="brijilangeshwaran">Brijilangeshwaran</option>
+            </select>
+            </div>
+
+            <div class="dragboxes">
+            <div class="dt1" id="div1" ondrop="drop(event)" ondragover="allowDrop(event)">
+                <div class="dg" draggable="true" ondragstart="drag(event)" id="drag1">Divakaran</div>
+                <div class="dg" draggable="true" ondragstart="drag(event)" id="drag2">Shambu</div>
+                <div class="dg" draggable="true" ondragstart="drag(event)" id="drag3">Peedambaran</div>
+                <div class="dg" draggable="true" ondragstart="drag(event)" id="drag4">Chakka Sasi</div>
+                <div class="dg" draggable="true" ondragstart="drag(event)" id="drag5">Brijilangeshwaran</div>
+            </div>
+              
+            <div class="dt2" id="div2" ondrop="drop(event)" ondragover="allowDrop(event)"></div>
+            </div>
+
+          <div class="btn">
+            <button type="submit" class="submitbtn" onclick="submitFunc()">Submit</button>
+          </div>
+        </div>
+      </form>
+
+  </body>
+</html>
