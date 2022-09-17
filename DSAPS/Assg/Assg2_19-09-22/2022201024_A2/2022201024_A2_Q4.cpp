@@ -33,9 +33,9 @@ public:
             }
         }
         
-        for(int i = 0; i < 3; i++)
-            delete[] arr[i];
-        delete[] arr;
+        // for(int i = 0; i < 3; i++)
+        //     delete[] arr[i];
+        // delete[] arr;
         capacity = newCapacity;
         arr = newArr;
     }
@@ -46,6 +46,34 @@ public:
         arr[1][ind]=col;
         arr[2][ind]=val;
         ind++;
+    }
+
+    void push_back_ow(T row, T col, T val){
+        for(int i=0; i<ind; i++){
+            if(arr[0][i]==row && arr[1][i]==col){
+                arr[2][i]+=val;
+                return;
+            }
+
+            if(row<=arr[0][i] && arr[1][i]>col){
+                T k=i;
+                T tempRow, tempCol, tempVal;
+                while(arr[2][k]!=0 && k<ind){
+                    tempRow = arr[0][k];
+                    tempCol = arr[1][k];
+                    tempVal = arr[2][k];
+                    arr[0][k]=row;
+                    arr[1][k]=col;
+                    arr[2][k]=val;
+                    row = tempRow;
+                    col = tempCol;
+                    val = tempVal;
+                    k++;
+                }
+                break;
+            }
+        }
+        push_back(row, col, val);
     }
 
     T* operator[](int index){
@@ -60,7 +88,7 @@ public:
     }
 
     arrSpMatrix<T> operator+(arrSpMatrix<T> mt){
-        arrSpMatrix res(n, m);
+        arrSpMatrix<T> res(n, m);
         int i=0, j=0;
         int r=0, c=0, v=0;
         while(i<ind && j<mt.ind){
@@ -109,18 +137,50 @@ public:
         return res;
     }
 
+    arrSpMatrix<T> operator*(arrSpMatrix<T> mt){
+        if(m!=mt.n){
+            cout<<"Matrices not compatible for multiplication!\n";
+            return arrSpMatrix(0, 0);
+        }
+
+        arrSpMatrix<T> b = mt.transpose();
+        arrSpMatrix<T> res(n, b.n);
+
+        for(int i=0; i<ind; i++){
+            for(int j=0; j<b.ind; j++){
+                if(arr[1][i]==b.arr[1][j]){
+                    res.push_back_ow(arr[0][i], b.arr[0][j], arr[2][i]*b.arr[2][j]);
+                }
+            }
+        }
+
+        return res;
+    }
+
     arrSpMatrix<T> transpose(){
         arrSpMatrix<T> tm(m, n);
-        tm.arr = arr;
+        for(int i=0; i<ind; i++){
+            tm.push_back(arr[0][i], arr[1][i], arr[2][i]);
+        }
+
         int *countArr = new T[m];
         for(int i=0; i<m; i++) countArr[i]=0;
         for(int i=0; i<ind; i++){
             countArr[arr[1][i]]++;
         }
         int* indexArr = new T[m+1];
+        for(int i=0; i<m; i++) indexArr[i]=0;
         for(int i=1; i<m; i++){
-            
+            indexArr[i] = countArr[i-1] + indexArr[i-1];
         }
+
+        for(int i=0; i<ind; i++){
+            int j = indexArr[arr[1][i]]++;
+            tm.arr[0][j] = arr[1][i];
+            tm.arr[1][j] = arr[0][i];
+            tm.arr[2][j] = arr[2][i];
+        }
+
         return tm;
     }
 
@@ -175,7 +235,7 @@ template<typename T> void arrSpAddition(){
         }
     }
     arrSpMatrix<T> mt = mt1+mt2;
-    cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt;
+    cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt<<"\n";
 }
 
 template<typename T> void arrSpTranspose(){
@@ -191,17 +251,40 @@ template<typename T> void arrSpTranspose(){
             }
         }
     }
-
-    mt.printArray();
-    
-    cout<<"\n";
     arrSpMatrix<T> tm = mt.transpose();
-    tm.printArray();
-    cout<<tm;
+    cout<<tm<<"\n";
 }
 
 template<typename T> void arrSpMultiplication(){
+    int n1, m1;
+    cin>>n1>>m1;
+    arrSpMatrix<T> mt1(n1, m1);
+    T val=0;
+    for(int i=0; i<n1; i++){
+        for(int j=0; j<m1; j++){
+            cin>>val;
+            if(val!=0){
+                mt1.push_back(i, j, val);
+            }
+        }
+    }
 
+    int n2, m2;
+    cin>>n2>>m2;
+    arrSpMatrix<T> mt2(n2, m2);
+    val=0;
+    for(int i=0; i<n2; i++){
+        for(int j=0; j<m2; j++){
+            cin>>val;
+            if(val!=0){
+                mt2.push_back(i, j, val);
+            }
+        }
+    }
+    arrSpMatrix<T> mt = mt1*mt2;
+    cout<<mt1<<"* \n"<<mt2<<"= \n"<<mt<<"\n";
+    cout<<"\n";
+    mt.printArray();
 }
 
 template<typename T> void switchArrSpOps(int tyOp){
@@ -249,3 +332,5 @@ int main(){
 
     return 0;
 }
+
+
