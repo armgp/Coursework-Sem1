@@ -344,10 +344,17 @@ template<typename T> Node<T>* llMerge(Node<T>* a, Node<T>* b){
                 d = a;
                 a = a->next;
                 d->next = NULL;
-            }else{
+            }else if(a->col > b->col){
                 d->next = b;
                 d = b;
                 b = b->next;
+                d->next = NULL;
+            }else {
+                b->val = a->val+b->val;
+                d->next = b;
+                d = b;
+                b = b->next;
+                a = a->next;
                 d->next = NULL;
             }
         }
@@ -417,6 +424,32 @@ public:
         back = newNode;
     }
 
+    void push_back_ow(T row, T col, T val){
+        Node<T>* i = front;
+        Node<T>* prev=NULL;
+        while(i!=NULL){
+            if(i->row==row && i->col==col){
+                i->val=i->val+val;
+                return;
+            }
+
+            if(row<=i->row && i->col>col){
+                Node<T>* newNode = new Node<T>(row, col, val);
+                if(prev==NULL){
+                    newNode->next = front;
+                    front = newNode;
+                }else{
+                    newNode->next = i;
+                    prev->next = newNode;
+                }
+                break;
+            }
+            prev = i;
+            i = i->next;
+        }
+        push_back(row, col, val);
+    }
+
     Node<T>* operator[](int index){
         if(index>=size){
             throw "index out of bounds";
@@ -483,6 +516,37 @@ public:
         return res;
     }
 
+    llSpMatrix<T> operator*(llSpMatrix<T> mt){
+        if(m!=mt.n){
+            cout<<"Matrices not compatible for multiplication!\n";
+            return llSpMatrix(0, 0);
+        }
+
+        llSpMatrix<T> b = mt.transpose();
+        llSpMatrix<T> res(n, b.n);
+
+        Node<T>* i=front;
+        while(i!=NULL){
+            Node<T>* j=b.front;
+            while(j!=NULL){
+                if(i->col==j->col){
+                    res.push_back(i->row, j->row, i->val*j->val);
+                }
+                j = j->next;
+            }
+            i = i->next;
+        }
+
+        res.front = llMergeSort(res.front, res.size);
+        Node<T>* curr = res.front;
+        while(curr!=NULL){
+            res.back=curr;
+            curr=curr->next;
+        }
+
+        return res;
+    }
+
     llSpMatrix<T> transpose(){
         llSpMatrix<T> tm(m, n);
         Node<T>* i = front;
@@ -492,14 +556,11 @@ public:
         }
         
         tm.front = llMergeSort(tm.front, tm.size);
-        Node<T>* curr = front;
+        Node<T>* curr = tm.front;
         while(curr!=NULL){
             tm.back=curr;
             curr=curr->next;
         }
-
-        tm.printArray();
-        cout<<"\n";
 
         return tm;
     }
@@ -563,7 +624,7 @@ template<typename T> void llSpAddition(){
 template<typename T> void llSpTranspose(){
     int n, m;
     cin>>n>>m;
-    llSpMatrix<T> mt(n, m);
+    llSpMatrix<T> mt(m, n);
     T val=0;
     for(int i=0; i<n; i++){
         for(int j=0; j<m; j++){
@@ -604,6 +665,7 @@ template<typename T> void llSpMultiplication(){
         }
     }
     llSpMatrix<T> mt = mt1*mt2;
+    
     cout<<mt1<<"* \n"<<mt2<<"= \n"<<mt<<"\n";
     cout<<"\n";
 }
