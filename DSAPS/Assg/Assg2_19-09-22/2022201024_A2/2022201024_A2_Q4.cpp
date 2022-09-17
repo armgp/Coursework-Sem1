@@ -32,10 +32,12 @@ public:
                 newArr[i][j]=arr[i][j];
             }
         }
-        arr = newArr;
+        
         for(int i = 0; i < 3; i++)
-            delete[] newArr[i];
-        delete[] newArr;
+            delete[] arr[i];
+        delete[] arr;
+        capacity = newCapacity;
+        arr = newArr;
     }
 
     void push_back(T row, T col, T val){
@@ -57,9 +59,69 @@ public:
         return data;
     }
 
-    T* operator+(arrSpMatrix<T> mt){
+    arrSpMatrix<T> operator+(arrSpMatrix<T> mt){
         arrSpMatrix res(n, m);
-        
+        int i=0, j=0;
+        int r=0, c=0, v=0;
+        while(i<ind && j<mt.ind){
+            if(arr[0][i]<mt.arr[0][j]){
+                r=arr[0][i];
+                c=arr[1][i];
+                v=arr[2][i];
+                i++;
+            }else if(arr[0][i]>mt.arr[0][j]){
+                r=mt.arr[0][j];
+                c=mt.arr[1][j];
+                v=mt.arr[2][j];
+                j++;
+            }else{
+                if(arr[1][i]<mt.arr[1][j]){
+                    r=arr[0][i];
+                    c=arr[1][i];
+                    v=arr[2][i];
+                    i++;
+                }else if(arr[1][i]>mt.arr[1][j]){
+                    r=mt.arr[0][j];
+                    c=mt.arr[1][j];
+                    v=mt.arr[2][j];
+                    j++;
+                }else{
+                    r=arr[0][i];
+                    c=arr[1][i];
+                    v=arr[2][i]+mt.arr[2][j];
+                    i++;
+                    j++;
+                }
+            }
+            res.push_back(r, c, v);
+        }
+
+        while(i<ind){
+            res.push_back(arr[0][i], arr[1][i], arr[2][i]);
+            i++;
+        }
+
+        while(j<mt.ind){
+            res.push_back(mt.arr[0][j], mt.arr[1][j], mt.arr[2][j]);
+            j++;
+        }
+
+        return res;
+    }
+
+    arrSpMatrix<T> transpose(){
+        arrSpMatrix<T> tm(m, n);
+        tm.arr = arr;
+        int *countArr = new T[m];
+        for(int i=0; i<m; i++) countArr[i]=0;
+        for(int i=0; i<ind; i++){
+            countArr[arr[1][i]]++;
+        }
+        int* indexArr = new T[m+1];
+        for(int i=1; i<m; i++){
+            
+        }
+        return tm;
     }
 
     /* debug */
@@ -74,10 +136,10 @@ public:
 };
 
 template<typename T> ostream &operator<<(ostream &out, arrSpMatrix<T> &c){
-    int ind=0;
+    int k=0;
     for(int i=0; i<c.n; i++){
         for(int j=0; j<c.m; j++){
-            if(c[ind][0]==i && c[ind][1]==j) out<<c[ind++][2]<<" ";
+            if(c[k][0]==i && c[k][1]==j) out<<c[k++][2]<<" ";
             else out<<T()<<" ";
         }
         out<<"\n";
@@ -112,18 +174,30 @@ template<typename T> void arrSpAddition(){
             }
         }
     }
-
-    // 1 0 0 3
-    // 3 2 4 0
-    // 0 5 9 5
-    // 1 0 0 1
-    // 0 0 6 1
-    cout<<mt1<<"\n"<<mt2;
-    // mt1.printArray();
+    arrSpMatrix<T> mt = mt1+mt2;
+    cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt;
 }
 
 template<typename T> void arrSpTranspose(){
+    int n, m;
+    cin>>n>>m;
+    arrSpMatrix<T> mt(n, m);
+    T val=0;
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            cin>>val;
+            if(val!=0){
+                mt.push_back(i, j, val);
+            }
+        }
+    }
 
+    mt.printArray();
+    
+    cout<<"\n";
+    arrSpMatrix<T> tm = mt.transpose();
+    tm.printArray();
+    cout<<tm;
 }
 
 template<typename T> void arrSpMultiplication(){
