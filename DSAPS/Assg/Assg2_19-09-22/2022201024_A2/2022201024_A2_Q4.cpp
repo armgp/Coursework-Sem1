@@ -1,12 +1,13 @@
 #include <iostream>
 using namespace std;
 
+/* Arr-Sparse-Matrix */
+
 template<typename T> class arrSpMatrix{
 public:
     T** arr;
     int n=0;
     int m=0;
-    //no of columns
     int capacity = 10;
     int ind=0;
 
@@ -56,7 +57,7 @@ public:
             }
 
             if(row<=arr[0][i] && arr[1][i]>col){
-                T k=i;
+                int k=i;
                 T tempRow, tempCol, tempVal;
                 while(arr[2][k]!=0 && k<ind){
                     tempRow = arr[0][k];
@@ -163,19 +164,19 @@ public:
             tm.push_back(arr[0][i], arr[1][i], arr[2][i]);
         }
 
-        int *countArr = new T[m];
+        T *countArr = new T[m];
         for(int i=0; i<m; i++) countArr[i]=0;
         for(int i=0; i<ind; i++){
-            countArr[arr[1][i]]++;
+            countArr[int(arr[1][i])]++;
         }
-        int* indexArr = new T[m+1];
+        T* indexArr = new T[m+1];
         for(int i=0; i<m; i++) indexArr[i]=0;
         for(int i=1; i<m; i++){
             indexArr[i] = countArr[i-1] + indexArr[i-1];
         }
 
         for(int i=0; i<ind; i++){
-            int j = indexArr[arr[1][i]]++;
+            int j = indexArr[int(arr[1][i])]++;
             tm.arr[0][j] = arr[1][i];
             tm.arr[1][j] = arr[0][i];
             tm.arr[2][j] = arr[2][i];
@@ -304,31 +305,333 @@ template<typename T> void switchArrSpOps(int tyOp){
     }
 }
 
+
+
+/* LL-Sparse-Matrix */
+
+template<typename T> struct Node{
+    T row=-1;
+    T col=-1;
+    T val=-1;
+    Node* next = NULL;
+
+    Node(){};
+
+    Node(T r, T c, T v){
+        row=r;
+        col=c;
+        val=v;
+    }
+};
+
+template<typename T> Node<T>* llMerge(Node<T>* a, Node<T>* b){
+    Node<T>* d = new Node<T>();
+    Node<T>* res = d;
+    while(a!=NULL && b!=NULL){
+        if(a->row < b->row){
+            d->next = a;
+            d = a;
+            a = a->next;
+            d->next = NULL;
+        }else if(a->row > b->row){
+            d->next = b;
+            d = b;
+            b = b->next;
+            d->next = NULL;
+        }else{
+            if(a->col < b->col){
+                d->next = a;
+                d = a;
+                a = a->next;
+                d->next = NULL;
+            }else{
+                d->next = b;
+                d = b;
+                b = b->next;
+                d->next = NULL;
+            }
+        }
+    }
+
+    while(a!=NULL){
+        d->next = a;
+        d = a;
+        a = a->next;
+        d->next = NULL;
+    }
+
+    while(b!=NULL){
+        d->next = b;
+        d = b;
+        b = b->next;
+        d->next = NULL;
+    }
+
+    return res->next;
+}
+
+template<typename T> Node<T>* llMergeSort(Node<T>* front, int n){
+    
+    if(front->next == NULL || n==1) return front;
+    Node<T>* curr = front;
+    int idx=1;
+    while(idx<n/2){
+        curr = curr->next;
+        idx++;
+    }
+    Node<T>* c = curr->next;
+    curr->next = NULL;
+
+    Node<T>* a = llMergeSort(front, n/2);
+    Node<T>* b = llMergeSort(c, n-(n/2));
+    Node<T>* res = llMerge(a, b);
+    return res;
+}
+
+template<typename T> class llSpMatrix{
+public:
+    int n;
+    int m;
+    int size=0;
+    Node<T>* front=NULL;
+    Node<T>* back=NULL;
+
+    llSpMatrix(int N, int M){
+        n=N;
+        m=M;
+        front = new Node<T>();
+        back = front;
+    }
+
+    void push_back(T row, T col, T val){
+        if(front->row == -1){
+            front->row = row;
+            front->col = col;
+            front->val = val;
+            size=1;
+            return;
+        }
+        Node<T>* newNode = new Node<T>(row, col, val);
+        size++;
+        back->next = newNode;
+        back = newNode;
+    }
+
+    Node<T>* operator[](int index){
+        if(index>=size){
+            throw "index out of bounds";
+        }
+        Node<T>* curr = front;
+        int pos = 0;
+        while(curr!=NULL){
+            if(pos == index){
+                return curr;
+            }
+            curr = curr->next;
+            size++;
+        }
+    }
+
+    llSpMatrix<T> operator+(llSpMatrix<T> mt){
+        Node<T>* i=front;
+        Node<T>* j = mt.front;
+        llSpMatrix<T> res(n, m);
+        int r=0, c=0, v=0;
+        while(i!=NULL && j!=NULL){
+            if(i->row<j->row){
+                r=i->row;
+                c=i->col;
+                v=i->val;
+                i=i->next;
+            }else if(i->row>j->row){
+                r=j->row;
+                c=j->col;
+                v=j->val;
+                j=j->next;
+            }else{
+                if(i->col<j->col){
+                    r=i->row;
+                    c=i->col;
+                    v=i->val;
+                    i=i->next;
+                }else if(i->col>j->col){
+                    r=j->row;
+                    c=j->col;
+                    v=j->val;
+                    j=j->next;
+                }else{
+                    r=i->row;
+                    c=i->col;
+                    v=i->val+j->val;
+                    i=i->next;
+                    j=j->next;
+                }
+            }
+            res.push_back(r, c, v);
+        }
+
+        while(i!=NULL){
+            res.push_back(i->row, i->col, i->val);
+            i=i->next;
+        }
+
+        while(j!=NULL){
+            res.push_back(j->row, j->col, j->val);
+            j=j->next;
+        }
+
+        return res;
+    }
+
+    llSpMatrix<T> transpose(){
+        llSpMatrix<T> tm(m, n);
+        Node<T>* i = front;
+        while(i!=NULL){
+            tm.push_back(i->col, i->row, i->val);
+            i=i->next;
+        }
+        
+        tm.front = llMergeSort(tm.front, tm.size);
+        Node<T>* curr = front;
+        while(curr!=NULL){
+            tm.back=curr;
+            curr=curr->next;
+        }
+
+        tm.printArray();
+        cout<<"\n";
+
+        return tm;
+    }
+
+    /* debug */
+    void printArray(){
+        Node<T>* curr = front;
+        while(curr!=NULL){
+            cout<<curr->row<<" "<<curr->col<<" "<<curr->val<<"\n";
+            curr = curr->next;
+        }
+    }
+};
+
+template<typename T> ostream &operator<<(ostream &out, llSpMatrix<T> &c){
+    Node<T>* k = c.front;;
+    for(int i=0; i<c.n; i++){
+        for(int j=0; j<c.m; j++){
+            if(k!=NULL && k->row==i && k->col==j) {
+                out<<k->val<<" ";
+                k=k->next;
+            }
+            else out<<T()<<" ";
+        }
+        out<<"\n";
+    }
+
+    return out;
+}
+
+template<typename T> void llSpAddition(){
+    int n1, m1;
+    cin>>n1>>m1;
+    llSpMatrix<T> mt1(n1, m1);
+    T val=0;
+    for(int i=0; i<n1; i++){
+        for(int j=0; j<m1; j++){
+            cin>>val;
+            if(val!=0){
+                mt1.push_back(i, j, val);
+            }
+        }
+    }
+
+    int n2, m2;
+    cin>>n2>>m2;
+    llSpMatrix<T> mt2(n2, m2);
+    val=0;
+    for(int i=0; i<n2; i++){
+        for(int j=0; j<m2; j++){
+            cin>>val;
+            if(val!=0){
+                mt2.push_back(i, j, val);
+            }
+        }
+    }
+    llSpMatrix<T> mt = mt1+mt2;
+    cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt<<"\n";
+}
+
+template<typename T> void llSpTranspose(){
+    int n, m;
+    cin>>n>>m;
+    llSpMatrix<T> mt(n, m);
+    T val=0;
+    for(int i=0; i<n; i++){
+        for(int j=0; j<m; j++){
+            cin>>val;
+            if(val!=0){
+                mt.push_back(i, j, val);
+            }
+        }
+    }
+    llSpMatrix<T> tm = mt.transpose();
+    cout<<tm<<"\n";
+}
+
+template<typename T> void llSpMultiplication(){
+    int n1, m1;
+    cin>>n1>>m1;
+    llSpMatrix<T> mt1(n1, m1);
+    T val=0;
+    for(int i=0; i<n1; i++){
+        for(int j=0; j<m1; j++){
+            cin>>val;
+            if(val!=0){
+                mt1.push_back(i, j, val);
+            }
+        }
+    }
+
+    int n2, m2;
+    cin>>n2>>m2;
+    llSpMatrix<T> mt2(n2, m2);
+    val=0;
+    for(int i=0; i<n2; i++){
+        for(int j=0; j<m2; j++){
+            cin>>val;
+            if(val!=0){
+                mt2.push_back(i, j, val);
+            }
+        }
+    }
+    llSpMatrix<T> mt = mt1*mt2;
+    cout<<mt1<<"* \n"<<mt2<<"= \n"<<mt<<"\n";
+    cout<<"\n";
+}
+
+template<typename T> void switchLLSpOps(int tyOp){
+    switch(tyOp){
+        case 1:
+            llSpAddition<T>();
+            break;
+        case 2:
+            llSpTranspose<T>();
+            break;
+        case 3:
+            llSpMultiplication<T>();
+            break;
+        default:
+            cout<<"Invalid Operation \n";
+            break;
+    }
+}
+
+
 int main(){
     int tyDs, tyOp;
     cin>>tyDs>>tyOp;
 
-    //array
-    if(tyDs==1){
-        switchArrSpOps<int>(tyOp);
-    }
-    //linkedlist
-    else{
-        switch(tyOp){
-            case 1:
-                //additionn
-                break;
-            case 2:
-                //transpose
-                break;
-            case 3:
-                //multiplication
-                break;
-            default:
-                cout<<"Invalid Operation \n";
-                break;
-        }
-    }
+    if(tyDs==1) switchArrSpOps<int>(tyOp);
+    else switchLLSpOps<int>(tyOp);
 
     return 0;
 }
