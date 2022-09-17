@@ -30,6 +30,7 @@
         "unordered_map": "cpp",
         "unordered_set": "cpp",
         "numbers": "cpp",
-        "ostream": "cpp"
+        "ostream": "cpp",
+        "iosfwd": "cpp"
     }
 }

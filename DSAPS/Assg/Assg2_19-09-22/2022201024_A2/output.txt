@@ -1,14 +1,12 @@
-└──78(3, 5, 2, 1)
-    ├──90.32(1, 0, 1, 1)
-    │   ├──90.43(0, 0, 0, 1)
-    └──43.22(2, 2, 2, 1)
-        ├──50(1, 0, 1, 1)
-        │   ├──50.01(0, 0, 0, 1)
-        └──12.11(0, 1, 0, 1)
-90.43 is present
-8.4 occurs 0 times. 
-The lower_bound of 23.3 = 43.22
-The upper_bound of 8.45 = 12.11
-The closest element to 33 is: 43.22
-The 4th largest element is: 50.01
-No: of elements in the range (11, 91) = 7
+0 0 0 3 
+1 2 0 0 
+0 3 3 5 
+0 0 0 0 
+0 0 6 1 
+
+1 0 0 0 
+2 0 4 0 
+0 2 6 0 
+1 0 0 1 
+0 0 0 0 
+
