@@ -1,6 +1,7 @@
 #include <iostream>
 using namespace std;
 
+
 template<typename T> struct Node {
 public:
     T val = T();
@@ -328,8 +329,8 @@ public:
     int count_range(T eLeft, T eRight);
 };
 
-//utils
 
+/* utils */
 template <typename T> Node<T>* AVLtree<T>::getRoot(){
     return root;
 }
@@ -351,8 +352,7 @@ template <typename T>  void printBT(const Node<T>* node){
 }
 
 
-
-//member functions
+/* member functions */
 template <typename T> void AVLtree<T>::insert(T e){
     root = insertNode(root, e);
 }
@@ -391,6 +391,7 @@ template <typename T> int AVLtree<T>::count_range(T eLeft, T eRight){
     return countRange(root, eLeft, eRight);
 }
 
+
 class myclass{
 public:
     int a;
@@ -428,6 +429,8 @@ ostream &operator<<(ostream &out, myclass const &c){
     return out;
 }
 
+
+/* testing */
 void intTest(){
     AVLtree<int> tree;
     tree.insert(54);
@@ -638,6 +641,7 @@ void classTest(){
     int st=50, ed=83;
     cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<ctree.count_range(c9, c11);
 }
+
 
 int main(){
     // intTest();

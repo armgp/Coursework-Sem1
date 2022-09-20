@@ -1,7 +1,69 @@
 #include <iostream>
+#include <algorithm>
 using namespace std;
 
+
 /* Arr-Sparse-Matrix */
+template<typename T> void arrMerge(T** arr, int st1, int ed1, int st2, int ed2){
+    int size = ed2-st1+1;
+    T** newarr = new T*[3];
+    for(int i=0; i<3; i++){
+        newarr[i] = new T[size];
+    }
+
+    int k=0;
+    int i=st1;
+    int j=st2;
+    while(i<=ed1 && j<=ed2){
+        if(arr[0][i]<arr[0][j]){
+            newarr[0][k]=arr[0][i];
+            newarr[1][k]=arr[1][i];
+            newarr[2][k]=arr[2][i];
+            k++;
+            i++;
+        }else if(arr[0][i]>arr[0][j]){
+            newarr[0][k]=arr[0][j];
+            newarr[1][k]=arr[1][j];
+            newarr[2][k]=arr[2][j];
+            k++;
+            j++;
+        }else if(arr[1][i]<arr[1][j]){
+            newarr[0][k]=arr[0][i];
+            newarr[1][k]=arr[1][i];
+            newarr[2][k++]=arr[2][i++];
+        }else{
+            newarr[0][k]=arr[0][j];
+            newarr[1][k]=arr[1][j];
+            newarr[2][k++]=arr[2][j++];
+        }
+    }
+
+    while(i<=ed1){
+        newarr[0][k]=arr[0][i];
+        newarr[1][k]=arr[1][i];
+        newarr[2][k++]=arr[2][i++];
+    }
+
+    while(j<=ed2){
+        newarr[0][k]=arr[0][j];
+        newarr[1][k]=arr[1][j];
+        newarr[2][k++]=arr[2][j++];
+    }
+
+    for(int it=st1, jt=0; it<=ed2 && jt<size; it++, jt++){
+        arr[0][it]=newarr[0][jt];
+        arr[1][it]=newarr[1][jt];
+        arr[2][it]=newarr[2][jt];
+    }
+}
+
+template<typename T> void arrMergeSort(T** arr, int st, int ed){
+    if(st>=ed) return;
+    int mid = (st+ed)/2;
+    arrMergeSort(arr, 0, mid);
+    arrMergeSort(arr, mid+1, ed);
+    arrMerge(arr, 0, mid, mid+1, ed);
+}
 
 template<typename T> class arrSpMatrix{
 public:
@@ -150,11 +212,27 @@ public:
         for(int i=0; i<ind; i++){
             for(int j=0; j<b.ind; j++){
                 if(arr[1][i]==b.arr[1][j]){
-                    res.push_back_ow(arr[0][i], b.arr[0][j], arr[2][i]*b.arr[2][j]);
+                    res.push_back(arr[0][i], b.arr[0][j], arr[2][i]*b.arr[2][j]);
                 }
             }
         }
 
+        arrMergeSort(res.arr, 0, res.ind-1);
+
+        //add values for same row col
+        for(int i=0; i<res.ind-1; i++){
+            if(res.arr[0][i]==res.arr[0][i+1] && res.arr[1][i]==res.arr[1][i+1]){
+                res.arr[2][i]+=res.arr[2][i+1];
+                for(int j=i+1; j<res.ind-1; j++){
+                    res.arr[0][j]=res.arr[0][j+1];
+                    res.arr[1][j]=res.arr[1][j+1];
+                    res.arr[2][j]=res.arr[2][j+1];
+                }
+                res.ind--;
+                i--;
+            }
+        }
+        
         return res;
     }
 
@@ -193,6 +271,7 @@ public:
             }
             cout<<"\n";
         }
+        cout<<"\n";
     }
 };
 
@@ -285,7 +364,7 @@ template<typename T> void arrSpMultiplication(){
     arrSpMatrix<T> mt = mt1*mt2;
     cout<<mt1<<"* \n"<<mt2<<"= \n"<<mt<<"\n";
     cout<<"\n";
-    mt.printArray();
+    // mt.printArray();
 }
 
 template<typename T> void switchArrSpOps(int tyOp){
@@ -308,7 +387,6 @@ template<typename T> void switchArrSpOps(int tyOp){
 
 
 /* LL-Sparse-Matrix */
-
 template<typename T> struct Node{
     T row=-1;
     T col=-1;
@@ -620,7 +698,9 @@ template<typename T> void llSpAddition(){
     llSpMatrix<T> mt = mt1+mt2;
     cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt<<"\n";
 }
-
+template<typename T> T** arrMerge(T** a1, int n1, T** a2, int n2){
+    
+}
 template<typename T> void llSpTranspose(){
     int n, m;
     cin>>n>>m;
