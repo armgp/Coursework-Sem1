@@ -335,22 +335,36 @@ template <typename T> Node<T>* AVLtree<T>::getRoot(){
     return root;
 }
 
-template <typename T> void printBT(const std::string& prefix, const Node<T>* node, bool isRight){
+template <typename T> void printAVL(const std::string& prefix, const Node<T>* node, bool isRight){
     if( node != nullptr ){
         cout << prefix;
         cout << (isRight ? "├──" : "└──" );
 
         cout << node->val<<"("<<node->height<<", "<<node->leftNodes<<", "<<node->rightNodes<<", "<<node->count<<")" << endl;
 
-        printBT( prefix + (isRight ? "│   " : "    "), node->right, true);
-        printBT( prefix + (isRight ? "│   " : "    "), node->left, false);
+        printAVL( prefix + (isRight ? "│   " : "    "), node->right, true);
+        printAVL( prefix + (isRight ? "│   " : "    "), node->left, false);
     }
 }
 
-template <typename T>  void printBT(const Node<T>* node){
-    printBT("", node, false);    
+template <typename T>  void printAVL(const Node<T>* node){
+    cout<<"val(height, leftnodes, rightnode, count)"<<"\n";
+    printAVL("", node, false);    
 }
 
+template <typename T> void printInorder(const Node<T>* node){
+    if(node == NULL) return;
+    printInorder(node->left);
+    for(int i=0; i<node->count; i++) cout<<node->val<<" ";
+    printInorder(node->right);
+}
+
+template <typename T> void printPreorder(const Node<T>* node){
+    if(node == NULL) return;
+    for(int i=0; i<node->count; i++) cout<<node->val<<" ";
+    printPreorder(node->left);
+    printPreorder(node->right);
+}
 
 /* member functions */
 template <typename T> void AVLtree<T>::insert(T e){
@@ -433,52 +447,58 @@ ostream &operator<<(ostream &out, myclass const &c){
 /* testing */
 void intTest(){
     AVLtree<int> tree;
-    tree.insert(54);
-    tree.insert(44);
-    tree.insert(86);
-    tree.insert(43);
-    tree.insert(46);
-    tree.insert(50);
-    tree.insert(78);
-    tree.insert(88);
-    tree.insert(50);
-    tree.insert(61);
-    tree.insert(83);
-    tree.insert(89);
-    tree.insert(50);
+    tree.insert(1);
+    tree.insert(2);
+    tree.insert(3);
+    tree.insert(4);
+    tree.insert(5);
+    tree.insert(6);
+    tree.insert(7);
+    tree.insert(7);
+    tree.insert(7);
+    // tree.insert(61);
+    // tree.insert(83);
+    // tree.insert(89);
+    // tree.insert(50);
     
-    tree.Delete(50);
-    tree.Delete(86);
-    tree.Delete(88);
-    tree.Delete(61);
-    tree.Delete(89);
-    tree.Delete(100);
-    tree.Delete(54);
-    tree.Delete(83);
+    // tree.Delete(50);
+    // tree.Delete(86);
+    // tree.Delete(88);
+    // tree.Delete(61);
+    // tree.Delete(89);
+    // tree.Delete(100);
+    // tree.Delete(54);
+    // tree.Delete(83);
 
-     printBT(tree.getRoot());
+     printAVL(tree.getRoot());
+
+     cout<<tree.count_occurence(7);
     
-    int n=89;
-    if(tree.search(n)) cout<<n<<" is present"<<"\n";
-    else cout<<n<<" is not present"<<"\n";
+    // int n=89;
+    // if(tree.search(n)) cout<<n<<" is present"<<"\n";
+    // else cout<<n<<" is not present"<<"\n";
 
-    n=50;
-    cout<<n<<" occurs "<<tree.count_occurence(n)<<" times. \n";
+    // n=50;
+    // cout<<n<<" occurs "<<tree.count_occurence(n)<<" times. \n";
 
-    n=62;
-    cout<<"The lower_bound of "<<n<<" = "<<tree.lower_bound(n)<<"\n";
+    // n=62;
+    // cout<<"The lower_bound of "<<n<<" = "<<tree.lower_bound(n)<<"\n";
 
-    n=54;
-    cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
+    // n=54;
+    // cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
 
-    n=45;
-    cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
+    // n=45;
+    // cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
 
-    int k = 11;
-    cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
+    // int k = 11;
+    // cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
 
-    int st=50, ed=83;
-    cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed);
+    // int st=50, ed=83;
+    // cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed)<<"\n";
+
+    // printInorder(tree.getRoot());
+    // cout<<"\n";
+    // printPreorder(tree.getRoot());
 }
 
 void floatTest(){
@@ -502,7 +522,7 @@ void floatTest(){
     tree.Delete(61.02);
     tree.Delete(23);
 
-    printBT(tree.getRoot());
+    printAVL(tree.getRoot());
     
     float n=90.43;
     if(tree.search(n)) cout<<n<<" is present"<<"\n";
@@ -553,7 +573,7 @@ void stringTest(){
     stree.Delete("54");
     stree.Delete("83");
 
-     printBT(stree.getRoot());
+     printAVL(stree.getRoot());
 
 
     string n="89";
@@ -619,7 +639,7 @@ void classTest(){
     myclass c13(50, "fifty");
     ctree.insert(c13);
 
-    printBT(ctree.getRoot());
+    printAVL(ctree.getRoot());
     
    
     int n = 89;
@@ -642,11 +662,80 @@ void classTest(){
     cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<ctree.count_range(c9, c11);
 }
 
+void mainTest(){
+    AVLtree<int> tree;
+    int operation;
+    cin>>operation;
+    int e;
+    switch (operation){
+        case 1:
+            cin>>e;
+            tree.insert(e);
+            break;
+
+        case 2:
+            cin>>e;
+            tree.Delete(e);
+            break;
+
+        case 3:
+            cin>>e;
+            tree.search(e);
+            break;
+
+        case 4:
+            cin>>e;
+            tree.count_occurence(e);
+            break;
+
+        case 5:
+            cin>>e;
+            tree.lower_bound(e);
+            break;
+
+        case 6:
+            cin>>e;
+            tree.upper_bound(e);
+            break;
+
+        case 7:
+            cin>>e;
+            tree.closest_element(e);
+            break;
+
+        case 8:
+            int k;
+            cin>>k;
+            tree.Kth_largest(k);
+            break;
+
+        case 9:
+            int left, right;
+            cin>>left>>right;
+            tree.count_range(left, right);
+            break;
+        
+        case 10:
+            printAVL(tree.getRoot());
+            break;
+
+        case 11:
+            printInorder(tree.getRoot());
+            break;
+
+        case 12:
+            printPreorder(tree.getRoot());
+            break;
+        
+        default:
+            break;
+    }
+}
 
 int main(){
-    // intTest();
-    floatTest();
+    intTest();
+    // floatTest();
     // stringTest();
-    // classTest();
+    // classTest()
     return 0;
 } 

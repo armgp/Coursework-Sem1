@@ -54,16 +54,6 @@ public:
                 arr[0][i]=tempPV;
                 arr[1][i]=tempPI;
             }
-            // else if(arr[0][parent] == arr[0][i]){
-            //     //delete arr[0][i]
-            //     long long tempV = arr[0][ind-1];
-            //     long long tempI = arr[1][ind-1];
-            //     arr[0][ind-1]=arr[0][i];
-            //     arr[1][ind-1]=arr[1][i];
-            //     arr[0][i]=tempV;
-            //     arr[1][i]=tempI;
-            //     heapify(i);
-            // }
             else break;
             i = parent;
         }
@@ -151,7 +141,7 @@ int main(){
     long long res[k+1];
     i=0;
     res[i++] = maxSum;
-;
+
     h.insert(maxSum-sortedVals[0], 0);
     while(i<k){
         long long* a = h.poll();
