@@ -153,7 +153,7 @@ public:
     arrSpMatrix<T> operator+(arrSpMatrix<T> mt){
         arrSpMatrix<T> res(n, m);
         int i=0, j=0;
-        int r=0, c=0, v=0;
+        T r=0, c=0, v=0;
         while(i<ind && j<mt.ind){
             if(arr[0][i]<mt.arr[0][j]){
                 r=arr[0][i];
@@ -279,8 +279,8 @@ template<typename T> ostream &operator<<(ostream &out, arrSpMatrix<T> &c){
     int k=0;
     for(int i=0; i<c.n; i++){
         for(int j=0; j<c.m; j++){
-            if(c[k][0]==i && c[k][1]==j) out<<c[k++][2]<<" ";
-            else out<<T()<<" ";
+            if(k<c.ind && c[k][0]==i && c[k][1]==j) out<<c[k++][2]<<"\t";
+            else out<<T()<<"\t";
         }
         out<<"\n";
     }
@@ -315,6 +315,8 @@ template<typename T> void arrSpAddition(){
         }
     }
     arrSpMatrix<T> mt = mt1+mt2;
+    mt.printArray();
+
     cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt<<"\n";
 }
 
@@ -547,7 +549,7 @@ public:
         Node<T>* i=front;
         Node<T>* j = mt.front;
         llSpMatrix<T> res(n, m);
-        int r=0, c=0, v=0;
+        T r=0, c=0, v=0;
         while(i!=NULL && j!=NULL){
             if(i->row<j->row){
                 r=i->row;
@@ -658,10 +660,10 @@ template<typename T> ostream &operator<<(ostream &out, llSpMatrix<T> &c){
     for(int i=0; i<c.n; i++){
         for(int j=0; j<c.m; j++){
             if(k!=NULL && k->row==i && k->col==j) {
-                out<<k->val<<" ";
+                out<<k->val<<"\t";
                 k=k->next;
             }
-            else out<<T()<<" ";
+            else out<<T()<<"\t";
         }
         out<<"\n";
     }
@@ -778,8 +780,8 @@ int main(){
     int tyDs, tyOp;
     cin>>tyDs>>tyOp;
 
-    if(tyDs==1) switchArrSpOps<int>(tyOp);
-    else switchLLSpOps<int>(tyOp);
+    if(tyDs==1) switchArrSpOps<float>(tyOp);
+    else switchLLSpOps<float>(tyOp);
 
     return 0;
 }

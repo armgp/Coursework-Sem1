@@ -402,7 +402,6 @@ template <typename T> int AVLtree<T>::count_range(T eLeft, T eRight){
     return countRange(root, eLeft, eRight);
 }
 
-
 class myclass{
 public:
     int a;
@@ -414,7 +413,7 @@ public:
     };
     int getA() {return a;}
     string getB() {return b;}
-
+    
     bool operator<(myclass const &c){
         return a<c.a;
     }
@@ -440,7 +439,6 @@ ostream &operator<<(ostream &out, myclass const &c){
     return out;
 }
 
-
 /* testing */
 void intTest(){
     AVLtree<int> tree;
@@ -451,31 +449,29 @@ void intTest(){
     tree.insert(5);
     tree.insert(6);
     tree.insert(7);
-    tree.insert(7);
-    tree.insert(7);
-    tree.insert(61);
-    tree.insert(83);
-    tree.insert(89);
-    tree.insert(50);
-    tree.insert(12);
-    tree.insert(72);
-    tree.insert(98);
-    tree.insert(0);
-    tree.insert(23);
-    tree.insert(65);
+    tree.insert(8);
+    tree.insert(9);
+    tree.insert(10);
+    tree.insert(10);
+    tree.insert(11);
+    tree.insert(11);
+    tree.insert(11);
+    
     
     // tree.Delete(50);
     // tree.Delete(86);
     // tree.Delete(7);
     // tree.Delete(61);
-    tree.Delete(1);
+    // tree.Delete(1);
     // tree.Delete(100);
     // tree.Delete(54);
     // tree.Delete(83);
 
     printAVL(tree.getRoot());
+    cout<<"Inorder: ";
     printInorder(tree.getRoot());
     cout<<"\n";
+    cout<<"Preorder: ";
     printPreorder(tree.getRoot());
 
     int v=7;
@@ -497,10 +493,65 @@ void intTest(){
     n=18;
     cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
 
-    int k = 11;
+    int k = 4;
     cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
 
     int st=0, ed=98;
+    cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed)<<"\n";
+}
+
+void charTest(){
+    AVLtree<char> tree;
+    tree.insert('q');
+    tree.insert('w');
+    tree.insert('e');
+    tree.insert('r');
+    tree.insert('t');
+    tree.insert('y');
+    tree.insert('u');
+    tree.insert('i');
+    tree.insert('o');
+    tree.insert('p');
+    
+    // tree.Delete(50);
+    // tree.Delete(86);
+    // tree.Delete(7);
+    // tree.Delete(61);
+    // tree.Delete(1);
+    // tree.Delete(100);
+    // tree.Delete(54);
+    // tree.Delete(83);
+
+    printAVL(tree.getRoot());
+    cout<<"Inorder: ";
+    printInorder(tree.getRoot());
+    cout<<"\n";
+    cout<<"Preorder: ";
+    printPreorder(tree.getRoot());
+
+    char v='q';
+    cout<<v<<" occurs "<<tree.count_occurence(7)<<"times \n";
+    
+    char n='w';
+    if(tree.search(n)) cout<<n<<" is present"<<"\n";
+    else cout<<n<<" is not present"<<"\n";
+
+    n='e';
+    cout<<n<<" occurs "<<tree.count_occurence(n)<<" times. \n";
+
+    n='r';
+    cout<<"The lower_bound of "<<n<<" = "<<tree.lower_bound(n)<<"\n";
+
+    n='i';
+    cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
+
+    n='z';
+    cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
+
+    int k = 4;
+    cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
+
+    char st='e', ed='y';
     cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed)<<"\n";
 }
 
@@ -736,9 +787,10 @@ void mainTest(){
 }
 
 int main(){
-    intTest();
+    // intTest();
+    // charTest();
     // floatTest();
     // stringTest();
-    // classTest()
+    // classTest();
     return 0;
 } 
