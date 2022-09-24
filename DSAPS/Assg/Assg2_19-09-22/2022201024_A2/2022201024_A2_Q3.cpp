@@ -203,17 +203,16 @@ private:
         return true;
     }
 
-    void occurenceCount(Node<T>* Root, T e, int& count){
-        if(Root==NULL) return;
+    int occurenceCount(Node<T>* Root, T e){
+        if(Root==NULL) return 0;
         if(Root->val == e){
-            count+=Root->count;
-            occurenceCount(Root->left, e, count);
-            occurenceCount(Root->right, e, count);
+            return Root->count;
         }else if(e > Root->val){
-            occurenceCount(Root->right, e, count);
+            return occurenceCount(Root->right, e);
         }else if(e < Root->val){
-            occurenceCount(Root->left, e, count);
+            return occurenceCount(Root->left, e);
         }
+        return 0;
     }
 
     T lowerBound(Node<T>* Root, T e){
@@ -314,7 +313,6 @@ private:
         return (leftRange+rightRange-Root->count);
     }
 
-
 public:
     AVLtree(){}
     Node<T>* getRoot();
@@ -349,7 +347,8 @@ template <typename T> void printAVL(const std::string& prefix, const Node<T>* no
 
 template <typename T>  void printAVL(const Node<T>* node){
     cout<<"val(height, leftnodes, rightnode, count)"<<"\n";
-    printAVL("", node, false);    
+    printAVL("", node, false);  
+    cout<<"\n";  
 }
 
 template <typename T> void printInorder(const Node<T>* node){
@@ -380,9 +379,7 @@ template <typename T> bool AVLtree<T>::search(T e){
 }
 
 template <typename T> int AVLtree<T>::count_occurence(T e){
-    int count = 0;
-    occurenceCount(root, e, count);
-    return count;
+    return occurenceCount(root, e);
 }
 
 template <typename T> T AVLtree<T>::lower_bound(T e){
@@ -456,49 +453,55 @@ void intTest(){
     tree.insert(7);
     tree.insert(7);
     tree.insert(7);
-    // tree.insert(61);
-    // tree.insert(83);
-    // tree.insert(89);
-    // tree.insert(50);
+    tree.insert(61);
+    tree.insert(83);
+    tree.insert(89);
+    tree.insert(50);
+    tree.insert(12);
+    tree.insert(72);
+    tree.insert(98);
+    tree.insert(0);
+    tree.insert(23);
+    tree.insert(65);
     
     // tree.Delete(50);
     // tree.Delete(86);
-    // tree.Delete(88);
+    // tree.Delete(7);
     // tree.Delete(61);
-    // tree.Delete(89);
+    tree.Delete(1);
     // tree.Delete(100);
     // tree.Delete(54);
     // tree.Delete(83);
 
-     printAVL(tree.getRoot());
+    printAVL(tree.getRoot());
+    printInorder(tree.getRoot());
+    cout<<"\n";
+    printPreorder(tree.getRoot());
 
-     cout<<tree.count_occurence(7);
+    int v=7;
+    cout<<v<<" occurs "<<tree.count_occurence(7)<<"times \n";
     
-    // int n=89;
-    // if(tree.search(n)) cout<<n<<" is present"<<"\n";
-    // else cout<<n<<" is not present"<<"\n";
+    int n=50;
+    if(tree.search(n)) cout<<n<<" is present"<<"\n";
+    else cout<<n<<" is not present"<<"\n";
 
-    // n=50;
-    // cout<<n<<" occurs "<<tree.count_occurence(n)<<" times. \n";
+    n=7;
+    cout<<n<<" occurs "<<tree.count_occurence(n)<<" times. \n";
 
-    // n=62;
-    // cout<<"The lower_bound of "<<n<<" = "<<tree.lower_bound(n)<<"\n";
+    n=84;
+    cout<<"The lower_bound of "<<n<<" = "<<tree.lower_bound(n)<<"\n";
 
-    // n=54;
-    // cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
+    n=83;
+    cout<<"The upper_bound of "<<n<<" = "<<tree.upper_bound(n)<<"\n";
 
-    // n=45;
-    // cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
+    n=18;
+    cout<<"The closest element to "<<n<<" is: "<<tree.closest_element(n)<<"\n";
 
-    // int k = 11;
-    // cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
+    int k = 11;
+    cout<<"The "<<k<<"th largest element is: "<<tree.Kth_largest(k)<<"\n"; 
 
-    // int st=50, ed=83;
-    // cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed)<<"\n";
-
-    // printInorder(tree.getRoot());
-    // cout<<"\n";
-    // printPreorder(tree.getRoot());
+    int st=0, ed=98;
+    cout<<"No: of elements in the range ("<<st<<", "<<ed<<") = "<<tree.count_range(st, ed)<<"\n";
 }
 
 void floatTest(){

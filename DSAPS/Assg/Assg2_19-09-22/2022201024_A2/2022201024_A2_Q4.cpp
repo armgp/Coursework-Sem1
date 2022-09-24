@@ -60,9 +60,9 @@ template<typename T> void arrMerge(T** arr, int st1, int ed1, int st2, int ed2){
 template<typename T> void arrMergeSort(T** arr, int st, int ed){
     if(st>=ed) return;
     int mid = (st+ed)/2;
-    arrMergeSort(arr, 0, mid);
+    arrMergeSort(arr, st, mid);
     arrMergeSort(arr, mid+1, ed);
-    arrMerge(arr, 0, mid, mid+1, ed);
+    arrMerge(arr, st, mid, mid+1, ed);
 }
 
 template<typename T> class arrSpMatrix{
@@ -685,6 +685,10 @@ template<typename T> void llSpAddition(){
 
     int n2, m2;
     cin>>n2>>m2;
+    if(n1!=n2 || m1!=m2){
+        cout<<"Matrices cannot be added!! \n";
+        return;
+    }
     llSpMatrix<T> mt2(n2, m2);
     val=0;
     for(int i=0; i<n2; i++){
@@ -698,9 +702,11 @@ template<typename T> void llSpAddition(){
     llSpMatrix<T> mt = mt1+mt2;
     cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt<<"\n";
 }
+
 template<typename T> T** arrMerge(T** a1, int n1, T** a2, int n2){
     
 }
+
 template<typename T> void llSpTranspose(){
     int n, m;
     cin>>n>>m;
