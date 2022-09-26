@@ -1,12 +1,9 @@
 4 4
-o a a n
-e t a e
-i h k r
-i f l v
-6
-oath
-pea
-eat
-rain
-hklf
-hf
+o a b n
+o t a e 
+a h k r 
+a f l v
+
+2
+oa
+oaa 

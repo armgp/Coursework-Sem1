@@ -1,62 +1,50 @@
 #include <iostream>
 using namespace std;
 
-bool dfsSearch(char** arr, int& r, int& c, int i,int j, string& word, int ind, int& n){
+struct Node{
+    struct Node *charachters[26];
+    bool isEnd;
+    bool found;
+    string currWord;
+    Node(){
+        isEnd = false;
+        found = false;
+        currWord ="";
+        for(int i=0; i<26; i++) charachters[i]=NULL;
+    }
+};
 
-    if(ind == n){
-        return true;
+class Trie {
+private:
+    Node* root;
+public:
+    Trie(){
+        root = new Node();
     }
 
-    char ch;
-    if(i>=r || j>=c || arr[i][j]=='0' || arr[i][j]!=word[ind]) return false;
-    else {
-        ch = arr[i][j];
-        arr[i][j]='0';
-    }
-
-    bool stat = false;
-    if(dfsSearch(arr, r, c, i+1, j, word, ind+1, n)){
-        stat = true;
-    } 
-    else if(dfsSearch(arr, r, c, i, j+1, word, ind+1, n)){
-        stat = true;
-    } 
-    else if(dfsSearch(arr, r, c, i-1, j, word, ind+1, n)){
-        stat = true;
-    }
-    else if(dfsSearch(arr, r, c, i, j-1, word, ind+1, n)){
-        stat = true;
-    } 
-
-    arr[i][j] = ch;
-    return stat;
-}
-
-bool isPresentInGrid(string word, char** arr, int r, int c){
-    int n = word.size();
-    for(int i=0; i<r; i++){
-        for(int j=0; j<c; j++){
-            if(arr[i][j] == word[0]){
-                if(dfsSearch(arr, r, c, i, j, word, 0, n)) return true;
+    void insertWord(string word){
+        Node* curr = root;
+        string w = "";
+        for(char c : word){
+            w+=c;
+            if(curr->charachters[c-'a'] == NULL){
+                Node* newNode = new Node();
+                newNode->currWord+=w;
+                curr->charachters[c-'a'] = newNode;
             }
+            curr = curr->charachters[c-'a'];
         }
+        curr->isEnd = true;
     }
-    return false;
-}
 
-void solvePuzzle(char** arr, int r, int c, string* stArr, int n){
-    int count = 0;
-    string res = "";
-    for(int i=0; i<n; i++){
-        if(isPresentInGrid(stArr[i], arr, r, c)){
-            count++;
-            res+=stArr[i];
-            res+="\n";
-        }
+    bool doesWordStartWith(char ch){
+        return !(root->charachters[ch-'a']==NULL);
     }
-    cout<<count<<"\n";
-    cout<<res;
-}
+
+    Node* getRoot(){
+        return this->root;
+    }
+};
 
 void merge(string* stArr, int st, int mid, int ed){
     int st1 = st;
@@ -98,6 +86,47 @@ void mergeSort(string* stArr, int st, int ed){
     merge(stArr, st, mid, ed);
 }
 
+void dfsSearch(char** arr, int& r, int& c, int i, int j, Node* node, string* stArr, int& ind){
+
+    char ch = arr[i][j];
+    if(!node) return;
+    
+    if(node->isEnd && !node->found) {
+        stArr[ind++]=node->currWord;
+        node->found = true;
+    }
+
+    arr[i][j] = '0';
+    
+    if(i+1<r && arr[i+1][j]!='0') dfsSearch(arr, r, c, i+1, j, node->charachters[arr[i+1][j]-'a'], stArr, ind);
+    if(j+1<c && arr[i][j+1]!='0') dfsSearch(arr, r, c, i, j+1, node->charachters[arr[i][j+1]-'a'], stArr, ind);
+    if(i-1>=0 && arr[i-1][j]!='0') dfsSearch(arr, r, c, i-1, j, node->charachters[arr[i-1][j]-'a'], stArr, ind);
+    if(j-1>=0 && arr[i][j-1]!='0') dfsSearch(arr, r, c, i, j-1, node->charachters[arr[i][j-1]-'a'], stArr, ind);
+    
+    arr[i][j] = ch;
+}
+
+void solvePuzzle(char** arr, int r, int c, Trie trie, int n){
+    int ind = 0;
+    string* stArr = new string[n];
+    for(int i=0; i<r; i++){
+        for(int j=0; j<c; j++){
+            char ch = arr[i][j];
+            if(trie.doesWordStartWith(ch)){
+                Node* root = trie.getRoot();
+                dfsSearch(arr, r, c, i, j, root->charachters[ch-'a'], stArr, ind);
+            }
+        }
+    }
+
+    if(ind>1) mergeSort(stArr, 0, ind-1);
+
+    cout<<ind<<"\n";
+    for(int i=0; i<ind; i++){
+        cout<<stArr[i]<<"\n";
+    }
+}
+
 int main(){
     int r, c;
     cin>>r>>c;
@@ -116,14 +145,15 @@ int main(){
     int x;
     cin>>x;
 
+    Trie trie;
+
     string* stArr = new string[x];
     for(int i=0; i<x; i++){
         cin>>stArr[i];
+        trie.insertWord(stArr[i]);
     }
 
-    mergeSort(stArr, 0, x-1);
-
-    solvePuzzle(arr, r, c, stArr, x);
+    solvePuzzle(arr, r, c, trie, x);
 
     return 0;
 }
