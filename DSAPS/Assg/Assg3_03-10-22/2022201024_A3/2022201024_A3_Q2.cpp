@@ -5,10 +5,10 @@
 #include <iomanip>
 #include <time.h>
 #include <fstream>
-// #include <chrono>
+
 using namespace std;
 
-#define TMPSIZE 10000
+#define TMPSIZE 100000
 
 string LOC = "../ex-sort-test/";
 long nTempFiles=0;

@@ -66,18 +66,24 @@ public:
         return res;
     }
 
-    int editDistance(string word1, int n, string word2, int m){
+    int findEditDistance(string word1, int n, string word2, int m, vector<vector<int>>& dp){
+        if(dp[n][m]!=-1) return dp[n][m];
         if(n==0 || m==0) return n+m;
         if(n==m && word1==word2) return 0;
-        if(word1[n-1] == word2[m-1]) return editDistance(word1, n-1, word2, m-1);
+        if(word1[n-1] == word2[m-1]) return dp[n][m]=findEditDistance(word1, n-1, word2, m-1, dp);
         else{
-            int a = 1+editDistance(word1, n-1, word2, m-1);
-            int b = 1+editDistance(word1, n-1, word2, m);
-            int c = 1+editDistance(word1, n, word2, m-1);
+            int a = 1+findEditDistance(word1, n-1, word2, m-1, dp);
+            int b = 1+findEditDistance(word1, n-1, word2, m, dp);
+            int c = 1+findEditDistance(word1, n, word2, m-1, dp);
             int d = min(a, min(b, c));
-            return d;
+            return dp[n][m]=d;
         }
         return 0;
+    }
+
+    int editDistance(string word1, int n, string word2, int m){
+        vector<vector<int>> dp(n+1, vector<int>(m+1, -1));
+        return findEditDistance(word1, n, word2, m, dp);
     }
 
     void getEdit3Words(Node* curr, string& ipWord, string currWord, vector<string>& res){

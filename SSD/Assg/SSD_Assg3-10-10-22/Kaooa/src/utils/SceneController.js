@@ -10,7 +10,7 @@ export default class SceneController {
 
   initScene() {
     this.camera = new THREE.PerspectiveCamera(40, window.innerWidth / window.innerHeight, 1, 1000);
-    this.camera.position.z = 10;
+    this.camera.position.z = 500;
 
     this.scene = new THREE.Scene();
 
@@ -21,7 +21,7 @@ export default class SceneController {
 
     document.body.appendChild(this.renderer.domElement);
 
-    this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
     this.stats = Stats();
     document.body.appendChild(this.stats.dom);
@@ -34,7 +34,7 @@ export default class SceneController {
     window.requestAnimationFrame(this.animate.bind(this));
     this.renderer.render(this.scene, this.camera);
     this.stats.update();
-    this.controls.update();
+    // this.controls.update();
   }
 
   onWindowResize() {

@@ -60,7 +60,7 @@ if __name__ == '__main__':
         if o_loop != out_count-1:
             buffer = [str(randint(start_range, end_range)) for _ in range(BUFFER_SIZE)]
             written_count += len(buffer)
-            o_file.write(" ".join(buffer) + ",")
+            o_file.write(" ".join(buffer) + " ")
         else:
             remaining = n_values % BUFFER_SIZE
             if remaining == 0:

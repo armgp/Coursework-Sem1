@@ -346,7 +346,7 @@ template <typename T> void printAVL(const std::string& prefix, const Node<T>* no
 }
 
 template <typename T>  void printAVL(const Node<T>* node){
-    cout<<"val(height, leftnodes, rightnode, count)"<<"\n";
+    cout<<"val(height, leftnodes, rightnodes, count)"<<"\n";
     printAVL("", node, false);  
     cout<<"\n";  
 }
@@ -473,6 +473,7 @@ void intTest(){
     cout<<"\n";
     cout<<"Preorder: ";
     printPreorder(tree.getRoot());
+    cout<<"\n";
 
     int v=7;
     cout<<v<<" occurs "<<tree.count_occurence(7)<<"times \n";
@@ -528,6 +529,7 @@ void charTest(){
     cout<<"\n";
     cout<<"Preorder: ";
     printPreorder(tree.getRoot());
+    cout<<"\n";
 
     char v='q';
     cout<<v<<" occurs "<<tree.count_occurence(7)<<"times \n";
@@ -577,6 +579,13 @@ void floatTest(){
     tree.Delete(23);
 
     printAVL(tree.getRoot());
+    cout<<"Inorder: ";
+    printInorder(tree.getRoot());
+    cout<<"\n";
+    cout<<"Preorder: ";
+    printPreorder(tree.getRoot());
+    cout<<"\n";
+
     
     float n=90.43;
     if(tree.search(n)) cout<<n<<" is present"<<"\n";
@@ -627,7 +636,14 @@ void stringTest(){
     stree.Delete("54");
     stree.Delete("83");
 
-     printAVL(stree.getRoot());
+    printAVL(stree.getRoot());
+    cout<<"Inorder: ";
+    printInorder(stree.getRoot());
+    cout<<"\n";
+    cout<<"Preorder: ";
+    printPreorder(stree.getRoot());
+    cout<<"\n";
+
 
 
     string n="89";
@@ -694,6 +710,13 @@ void classTest(){
     ctree.insert(c13);
 
     printAVL(ctree.getRoot());
+    cout<<"Inorder: ";
+    printInorder(ctree.getRoot());
+    cout<<"\n";
+    cout<<"Preorder: ";
+    printPreorder(ctree.getRoot());
+    cout<<"\n";
+
     
    
     int n = 89;
@@ -787,7 +810,7 @@ void mainTest(){
 }
 
 int main(){
-    // intTest();
+    intTest();
     // charTest();
     // floatTest();
     // stringTest();
