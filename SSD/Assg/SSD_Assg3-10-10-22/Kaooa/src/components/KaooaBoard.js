@@ -74,33 +74,34 @@ export default class KaooaBoard {
         const ht9=this.getHiddenTiles(33, -20, -4);
         const ht10=this.getHiddenTiles(-49, -26, -4);
 
+        ht1.alt='1';
         ht1.crowMoves = [ht4, ht5];
         ht1.vultureMoves = [ht4, ht5, ht10, ht9];
-
+        ht2.alt='2';
         ht2.crowMoves = [ht8, ht9];
         ht2.vultureMoves = [ht8, ht9, ht10, ht5];
-
+        ht3.alt='3';
         ht3.crowMoves = [ht5, ht9];
         ht3.vultureMoves = [ht5, ht9, ht4, ht8];
-
+        ht4.alt='4';
         ht4.crowMoves = [ht1, ht7, ht5, ht10];
         ht4.vultureMoves = [ht1, ht7, ht5, ht10, ht3, ht6];
-
+        ht5.alt='5';
         ht5.crowMoves = [ht1, ht4, ht3, ht9];
         ht5.vultureMoves = [ht1, ht4, ht3, ht9, ht2, ht7];
-
+        ht6.alt='6';
         ht6.crowMoves = [ht8, ht10];
         ht6.vultureMoves = [ht8, ht10, ht4, ht9];
-
+        ht7.alt='7';
         ht7.crowMoves = [ht4, ht10];
         ht7.vultureMoves = [ht4, ht10, ht8, ht5];
-
+        ht8.alt='8';
         ht8.crowMoves = [ht6, ht10, ht9, ht2];
         ht8.vultureMoves = [ht6, ht10, ht9, ht2, ht7, ht3];
-
+        ht9.alt='9';
         ht9.crowMoves = [ht2, ht8, ht5, ht3];
         ht9.vultureMoves = [ht2, ht8, ht5, ht3, ht1, ht6];
-
+        ht10.alt='10';
         ht10.crowMoves = [ht6, ht8, ht4, ht7];
         ht10.vultureMoves = [ht6, ht8, ht4, ht7, ht1, ht2];
         
@@ -164,6 +165,7 @@ export default class KaooaBoard {
         ht.x = x;
         ht.y = y;
         ht.z = z;
+        ht.player = 'crow';
         return ht;
     }
 
@@ -180,6 +182,7 @@ export default class KaooaBoard {
         ht.x = x;
         ht.y = y;
         ht.z = z;
+        ht.player = 'vulture';
         return ht;
     }
 

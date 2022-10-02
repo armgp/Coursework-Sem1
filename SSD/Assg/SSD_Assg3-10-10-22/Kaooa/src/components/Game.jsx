@@ -82,15 +82,22 @@ export default function Game() {
             event.object.position.z=event.object.z;
         });
 
+        var nextMoves;
         const onMouseDown = (event) => {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            console.log(mouse.x);
             raycaster.setFromCamera(mouse, game.camera);
             const intersects = raycaster.intersectObjects(kboard.hiddenTiles.children);
-
+            console.log("out");
+            console.log(intersects);
             if(intersects.length > 1 && intersects[0].object.isOccupied){
                 intersects[0].object.isOccupied = false;
+                if(intersects[0].object.player == 'crow'){
+                    nextMoves = intersects[0].object.crowMoves;
+                    console.log(nextMoves);
+                }else{
+                    nextMoves = intersects[0].object.vultureMoves;
+                }
             }
         }
         window.addEventListener("mousedown", onMouseDown, false);
@@ -98,15 +105,37 @@ export default function Game() {
         const onMouseUp = (event) => {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            console.log(mouse.x);
             raycaster.setFromCamera(mouse, game.camera);
             const intersects = raycaster.intersectObjects(kboard.hiddenTiles.children);
+            
+            console.log(intersects);
+            if(intersects.length > 0 && !intersects[0].object.isOccupied && currDraggedObj!=undefined){
+                var isMovePossible = true;
+                if(nextMoves!=undefined && nextMoves!=[]){
+                    console.log("inside");
+                    console.log(nextMoves);
+                    isMovePossible = false;
+                    nextMoves.forEach((obj) => {
+                        if(obj.uuid === intersects[0].object.uuid) {
+                            isMovePossible = true;
+                            return;
+                        };
+                    });
+                }
 
-            if(intersects.length > 0 && !intersects[0].object.isOccupied){
-                currDraggedObj.position.x = intersects[0].object.x;
-                currDraggedObj.position.y = intersects[0].object.y;
-                intersects[0].object.isOccupied = true;
+                console.log(isMovePossible);
+
+                if(isMovePossible){
+                    currDraggedObj.position.x = intersects[0].object.x;
+                    currDraggedObj.position.y = intersects[0].object.y;
+                    currDraggedObj.x = intersects[0].object.x;
+                    currDraggedObj.y = intersects[0].object.y;
+                    intersects[0].object.isOccupied = true;
+                    intersects[0].object.player = currDraggedObj.player;
+                    nextMoves = undefined;
+                }
             }
+            currDraggedObj=undefined;
         }
         window.addEventListener("mouseup", onMouseUp, false);
 
@@ -114,8 +143,6 @@ export default function Game() {
         // window.addEventListener("mousemove", onMouseMove, false);
 
     }, []);
-
-    window.add
 
     return (
         <div className="flex flex-col items-center justify-center">
