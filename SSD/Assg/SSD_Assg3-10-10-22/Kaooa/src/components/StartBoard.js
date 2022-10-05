@@ -7,7 +7,7 @@ export default class StartBoard {
         this.board = new THREE.Group();
         const fontLoader = new FontLoader();
         fontLoader.load('src/assets/Karma_Future_Regular.json', (font)=>{
-            const geometry = new TextGeometry(`START GAME`, {
+            const geometry = new TextGeometry(`START KAOOA`, {
                 font: font,
                 size: 10,
                 height: 4

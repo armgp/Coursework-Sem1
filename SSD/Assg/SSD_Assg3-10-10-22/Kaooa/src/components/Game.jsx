@@ -8,6 +8,19 @@ import PlayerBoard from "./PlayerBoard";
 import WinnerBoard from "./WinnerBoard";
 import StartBoard from "./StartBoard";
 
+var mouseEvents = [];
+  
+function exportMouseInfo() {
+    const fileData = JSON.stringify(mouseEvents);
+    const blob = new Blob([fileData], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.download = "user-info.json";
+    link.href = url;
+    link.click();
+}
+
+
 export default function Game() {
     const canvasId = "kaooaCanvas";
     const bgcolor = "#000000";
@@ -31,9 +44,13 @@ export default function Game() {
         game.scene.add(directionalLight2);
         game.scene.add(directionalLight3);
 
+        window.localStorage.clear();
         var gameStarted = false;
+        var i=0;
         game.scene.add(new StartBoard().board);
         const onMouseClick = (event) => {
+            mouseEvents.push([`MouseEvents${i}`, "clicked"]);
+            i++;
             if(!gameStarted){
                 gameStarted = true;
                 game.scene.remove(game.scene.children[3]);
@@ -87,6 +104,8 @@ export default function Game() {
         var vultureKills=0;
 
         controls.addEventListener('dragstart', (event)=>{
+            mouseEvents.push([`MouseEvents${i}`, "drag started"]);
+            i++;
             if((crowsTurn && event.object.player=='crow') || (!crowsTurn && event.object.player=='vulture')){
                 currDraggedObj = event.object;
             }
@@ -96,12 +115,16 @@ export default function Game() {
         });
 
         controls.addEventListener('dragend', (event)=>{
+            mouseEvents.push([`MouseEvents${i}`, "drag ended"]);
+            i++;
             event.object.position.x=event.object.x;
             event.object.position.y=event.object.y;
             event.object.position.z=event.object.z;
         });
 
         const onMouseUp = (event) => {
+            mouseEvents.push([`MouseEvents${i}`, "mouse up"]);
+            i++;
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, game.camera);
@@ -194,6 +217,7 @@ export default function Game() {
                     game.scene.remove(game.scene.children[4]); 
                     game.scene.remove(playerBoard.board);
                     game.scene.add(new WinnerBoard('CROWS').board);
+                    exportMouseInfo();
                 }
             }else if(crowsTurn){
                 if(vultureKills == 4){
@@ -201,6 +225,7 @@ export default function Game() {
                     game.scene.remove(game.scene.children[4]); 
                     game.scene.remove(playerBoard.board);
                     game.scene.add(new WinnerBoard('VULTURE').board);
+                    exportMouseInfo();
                 }
             }
             
