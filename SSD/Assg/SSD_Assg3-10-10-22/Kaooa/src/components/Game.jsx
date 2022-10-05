@@ -6,6 +6,7 @@ import SceneController from "../utils/SceneController";
 import KaooaBoard from "./KaooaBoard";
 import PlayerBoard from "./PlayerBoard";
 import WinnerBoard from "./WinnerBoard";
+import StartBoard from "./StartBoard";
 
 export default function Game() {
     const canvasId = "kaooaCanvas";
@@ -30,39 +31,49 @@ export default function Game() {
         game.scene.add(directionalLight2);
         game.scene.add(directionalLight3);
 
-        game.scene.add(kboard.board);
+        var gameStarted = false;
+        game.scene.add(new StartBoard().board);
+        const onMouseClick = (event) => {
+            if(!gameStarted){
+                gameStarted = true;
+                game.scene.remove(game.scene.children[3]);
+                game.scene.add(kboard.board);
 
-        const grow = (object) => {
-            if(object.scale.x<1) object.scale.x+=0.04;
-            if(object.scale.y<1) object.scale.y+=0.04;
-            if(object.scale.z<1) object.scale.z+=0.04;
+                const grow = (object) => {
+                    if(object.scale.x<1) object.scale.x+=0.04;
+                    if(object.scale.y<1) object.scale.y+=0.04;
+                    if(object.scale.z<1) object.scale.z+=0.04;
+                }
+
+                var growthIndex = 0.0002;
+                const animateEntry = () => {
+                    if(kboard.board.scale.x < 1) {
+                        kboard.board.scale.x+=growthIndex;
+                        kboard.board.rotation.z += 0.03;
+                    }
+                    if(kboard.board.scale.y < 1) kboard.board.scale.y+=growthIndex;
+                    if(kboard.board.scale.z < 1) kboard.board.scale.z+=growthIndex;
+                    growthIndex*=2;
+                    requestAnimationFrame(animateEntry);
+                };
+                
+                const animateBoard = () => {
+                    if(kboard.board.scale.x < 1) {
+                        // kboard.board.rotation.x += 0.01;
+                        // kboard.board.rotation.y += 0.01;
+                        kboard.board.rotation.z += 0.003;
+                        requestAnimationFrame(animateBoard);
+                    }
+                };
+                
+                animateBoard();
+                animateEntry();
+                game.scene.add(playerBoard.board);
+            }
+            console.log(gameStarted);
         }
-
-        var growthIndex = 0.0002;
-        const animateEntry = () => {
-            if(kboard.board.scale.x < 1) {
-                kboard.board.scale.x+=growthIndex;
-                kboard.board.rotation.z += 0.03;
-            }
-            if(kboard.board.scale.y < 1) kboard.board.scale.y+=growthIndex;
-            if(kboard.board.scale.z < 1) kboard.board.scale.z+=growthIndex;
-            growthIndex*=2;
-            requestAnimationFrame(animateEntry);
-        };
+        window.addEventListener("click", onMouseClick, false);
         
-        const animateBoard = () => {
-            if(kboard.board.scale.x < 1) {
-                // kboard.board.rotation.x += 0.01;
-                // kboard.board.rotation.y += 0.01;
-                kboard.board.rotation.z += 0.003;
-                requestAnimationFrame(animateBoard);
-            }
-        };
-        
-        animateBoard();
-        animateEntry();
-        game.scene.add(playerBoard.board);
-
         /* ----------mouse controls---------- */
     
         const controls = new DragControls(kboard.crowsAndVulture.children, game.camera, game.renderer.domElement);
@@ -72,6 +83,8 @@ export default function Game() {
         var currDraggedObj;
         var crowsTurn = true;
         var vulturePlayer = kboard.vulturePlayer;
+        var killedPosX = -300;
+        var vultureKills=0;
 
         controls.addEventListener('dragstart', (event)=>{
             if((crowsTurn && event.object.player=='crow') || (!crowsTurn && event.object.player=='vulture')){
@@ -98,6 +111,7 @@ export default function Game() {
                 var n = allNextMoves.length;
                 var nextMoves = allNextMoves;
                 var isMovePossible = true;
+                var isKillMovePossible = true;
 
                 if(currDraggedObj.player == 'vulture') nextMoves = nextMoves.slice(-1*n, -2);
 
@@ -106,8 +120,7 @@ export default function Game() {
                     nextMoves.forEach((obj) => {
                         if(obj.uuid === intersects[0].object.uuid) {
                             isMovePossible = true;
-                            return;
-                        };
+                        }
                     });
                 }
 
@@ -115,15 +128,27 @@ export default function Game() {
                     var killMoves = allNextMoves.slice(-2);
                    
                     isMovePossible = false;
-                    killMoves.forEach((obj) => {
-                        if(obj.uuid === intersects[0].object.uuid) {
-                            isMovePossible = true;
-                            return;
-                        };
-                    });
-
-                    if(isMovePossible){
-                        
+                    for(var i=0; i<2; i++){
+                        var obj = killMoves[i];
+                        if(obj.uuid === intersects[0].object.uuid){
+                            if(i==0 && nextMoves[1].isOccupied){
+                                //killed -> nextMoves[1].currPlayer
+                                nextMoves[1].isOccupied = false;
+                                nextMoves[1].currPlayer.position.x = killedPosX;
+                                killedPosX+=10;
+                                nextMoves[1].currPlayer.position.y = -25;
+                                vultureKills++;
+                                isMovePossible = true;
+                            }else if(i==1 && nextMoves[0].isOccupied){
+                                //illed -> nextMoves[0]
+                                nextMoves[0].isOccupied = false;
+                                nextMoves[0].currPlayer.position.x = killedPosX;
+                                killedPosX+=10;
+                                nextMoves[0].currPlayer.position.y = -25;
+                                vultureKills++;
+                                isMovePossible = true;
+                            }
+                        }
                     }
                     
                 }
@@ -135,6 +160,7 @@ export default function Game() {
                     currDraggedObj.x = intersects[0].object.x;
                     currDraggedObj.y = intersects[0].object.y;
                     intersects[0].object.isOccupied = true;
+                    intersects[0].object.currPlayer = currDraggedObj;
                     if(currDraggedObj.currPos!=undefined){
                         currDraggedObj.currPos.isOccupied = false;
                     }
@@ -169,10 +195,18 @@ export default function Game() {
                     game.scene.remove(playerBoard.board);
                     game.scene.add(new WinnerBoard('CROWS').board);
                 }
+            }else if(crowsTurn){
+                if(vultureKills == 4){
+                    game.scene.remove(game.scene.children[3]); 
+                    game.scene.remove(game.scene.children[4]); 
+                    game.scene.remove(playerBoard.board);
+                    game.scene.add(new WinnerBoard('VULTURE').board);
+                }
             }
             
         }
         window.addEventListener("mouseup", onMouseUp, false);
+
     }, []);
 
     return (

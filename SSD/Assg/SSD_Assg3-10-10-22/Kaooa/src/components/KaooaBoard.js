@@ -150,6 +150,7 @@ export default class KaooaBoard {
         ht.y = y;
         ht.z = z;
         ht.isOccupied = false;
+        ht.currPlayer = undefined;
         return ht;
     }
 

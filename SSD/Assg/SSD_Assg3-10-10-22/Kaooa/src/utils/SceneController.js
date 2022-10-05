@@ -20,11 +20,11 @@ export default class SceneController {
     this.renderer.setClearColor(this.bgcolor);
 
     document.body.appendChild(this.renderer.domElement);
-    
+
     // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
-    this.stats = Stats();
-    document.body.appendChild(this.stats.dom);
+    // this.stats = Stats();
+    // document.body.appendChild(this.stats.dom);
 
     window.addEventListener("resize", () => this.onWindowResize(), false);
 
@@ -33,7 +33,7 @@ export default class SceneController {
   animate() {
     window.requestAnimationFrame(this.animate.bind(this));
     this.renderer.render(this.scene, this.camera);
-    this.stats.update();
+    // this.stats.update();
     // this.controls.update();
   }
 
