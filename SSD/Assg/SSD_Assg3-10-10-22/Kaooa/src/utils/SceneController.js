@@ -20,7 +20,7 @@ export default class SceneController {
     this.renderer.setClearColor(this.bgcolor);
 
     document.body.appendChild(this.renderer.domElement);
-
+    
     // this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
     this.stats = Stats();

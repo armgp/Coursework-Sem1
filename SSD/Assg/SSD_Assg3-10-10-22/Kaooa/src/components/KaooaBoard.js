@@ -76,19 +76,19 @@ export default class KaooaBoard {
 
         ht1.alt='1';
         ht1.crowMoves = [ht4, ht5];
-        ht1.vultureMoves = [ht4, ht5, ht10, ht9];
+        ht1.vultureMoves = [ht4, ht5, ht9, ht10];
         ht2.alt='2';
         ht2.crowMoves = [ht8, ht9];
-        ht2.vultureMoves = [ht8, ht9, ht10, ht5];
+        ht2.vultureMoves = [ht8, ht9, ht5, ht10];
         ht3.alt='3';
         ht3.crowMoves = [ht5, ht9];
-        ht3.vultureMoves = [ht5, ht9, ht4, ht8];
+        ht3.vultureMoves = [ht5, ht9, ht8, ht4];
         ht4.alt='4';
         ht4.crowMoves = [ht1, ht7, ht5, ht10];
-        ht4.vultureMoves = [ht1, ht7, ht5, ht10, ht3, ht6];
+        ht4.vultureMoves = [ht10, ht5, ht7, ht1, ht3, ht6];
         ht5.alt='5';
         ht5.crowMoves = [ht1, ht4, ht3, ht9];
-        ht5.vultureMoves = [ht1, ht4, ht3, ht9, ht2, ht7];
+        ht5.vultureMoves = [ht4, ht9, ht3, ht1, ht2, ht7];
         ht6.alt='6';
         ht6.crowMoves = [ht8, ht10];
         ht6.vultureMoves = [ht8, ht10, ht4, ht9];
@@ -97,13 +97,13 @@ export default class KaooaBoard {
         ht7.vultureMoves = [ht4, ht10, ht8, ht5];
         ht8.alt='8';
         ht8.crowMoves = [ht6, ht10, ht9, ht2];
-        ht8.vultureMoves = [ht6, ht10, ht9, ht2, ht7, ht3];
+        ht8.vultureMoves = [ht10, ht9, ht6, ht2, ht3, ht7];
         ht9.alt='9';
         ht9.crowMoves = [ht2, ht8, ht5, ht3];
-        ht9.vultureMoves = [ht2, ht8, ht5, ht3, ht1, ht6];
+        ht9.vultureMoves = [ht8, ht5, ht2, ht3, ht1, ht6];
         ht10.alt='10';
         ht10.crowMoves = [ht6, ht8, ht4, ht7];
-        ht10.vultureMoves = [ht6, ht8, ht4, ht7, ht1, ht2];
+        ht10.vultureMoves = [ht8, ht4, ht6, ht7, ht1, ht2];
         
         this.hiddenTiles.add(ht1);
         this.hiddenTiles.add(ht2);
@@ -128,7 +128,8 @@ export default class KaooaBoard {
         this.crowsAndVulture.add(this.getNewCrow(200, 72, 15));
 
         /* 1 vulture */
-        this.crowsAndVulture.add(this.getVulture(200, -48, 15));
+        this.vulturePlayer = this.getVulture(200, -48, 15);
+        this.crowsAndVulture.add(this.vulturePlayer);
 
         this.board.add(this.hiddenTiles);
         this.board.add(this.crowsAndVulture);
@@ -166,6 +167,8 @@ export default class KaooaBoard {
         ht.y = y;
         ht.z = z;
         ht.player = 'crow';
+        ht.nextMoves = [];
+        ht.currPos = undefined;
         return ht;
     }
 
@@ -183,6 +186,8 @@ export default class KaooaBoard {
         ht.y = y;
         ht.z = z;
         ht.player = 'vulture';
+        ht.nextMoves = [];
+        ht.currPos = undefined;
         return ht;
     }
 

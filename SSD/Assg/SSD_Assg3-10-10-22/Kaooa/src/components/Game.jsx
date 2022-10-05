@@ -4,6 +4,8 @@ import { useEffect } from "react";
 
 import SceneController from "../utils/SceneController";
 import KaooaBoard from "./KaooaBoard";
+import PlayerBoard from "./PlayerBoard";
+import WinnerBoard from "./WinnerBoard";
 
 export default function Game() {
     const canvasId = "kaooaCanvas";
@@ -15,6 +17,8 @@ export default function Game() {
         game.animate();
 
         const kboard = new KaooaBoard();
+        var playerBoard = new PlayerBoard('CROW\'S TURN');
+
         const directionalLight3 = new THREE.DirectionalLight(0x8F35C2, 1);
         const directionalLight1 = new THREE.DirectionalLight(0x29C29E, 1);
         const directionalLight2 = new THREE.DirectionalLight(0xC91111, 1);
@@ -57,63 +61,47 @@ export default function Game() {
         
         animateBoard();
         animateEntry();
-
-
-
+        game.scene.add(playerBoard.board);
 
         /* ----------mouse controls---------- */
-        
-        
-        
-
+    
         const controls = new DragControls(kboard.crowsAndVulture.children, game.camera, game.renderer.domElement);
-        
-        // controls.addEventListener('dragstart', (event)=>{
-        //     event.object.material.emissive = 0xaaaaaa;
-        // });
 
         const mouse = new THREE.Vector2();
         const raycaster = new THREE.Raycaster();
         var currDraggedObj;
+        var crowsTurn = true;
+        var vulturePlayer = kboard.vulturePlayer;
+
+        controls.addEventListener('dragstart', (event)=>{
+            if((crowsTurn && event.object.player=='crow') || (!crowsTurn && event.object.player=='vulture')){
+                currDraggedObj = event.object;
+            }
+            else {
+                currDraggedObj = undefined;
+            }
+        });
+
         controls.addEventListener('dragend', (event)=>{
-            currDraggedObj = event.object;
             event.object.position.x=event.object.x;
             event.object.position.y=event.object.y;
             event.object.position.z=event.object.z;
         });
-
-        var nextMoves;
-        const onMouseDown = (event) => {
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-            raycaster.setFromCamera(mouse, game.camera);
-            const intersects = raycaster.intersectObjects(kboard.hiddenTiles.children);
-            console.log("out");
-            console.log(intersects);
-            if(intersects.length > 1 && intersects[0].object.isOccupied){
-                intersects[0].object.isOccupied = false;
-                if(intersects[0].object.player == 'crow'){
-                    nextMoves = intersects[0].object.crowMoves;
-                    console.log(nextMoves);
-                }else{
-                    nextMoves = intersects[0].object.vultureMoves;
-                }
-            }
-        }
-        window.addEventListener("mousedown", onMouseDown, false);
 
         const onMouseUp = (event) => {
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             raycaster.setFromCamera(mouse, game.camera);
             const intersects = raycaster.intersectObjects(kboard.hiddenTiles.children);
-            
-            console.log(intersects);
-            if(intersects.length > 0 && !intersects[0].object.isOccupied && currDraggedObj!=undefined){
+            if(intersects.length>0 && !intersects[0].object.isOccupied){
+                var allNextMoves = currDraggedObj.nextMoves;
+                var n = allNextMoves.length;
+                var nextMoves = allNextMoves;
                 var isMovePossible = true;
-                if(nextMoves!=undefined && nextMoves!=[]){
-                    console.log("inside");
-                    console.log(nextMoves);
+
+                if(currDraggedObj.player == 'vulture') nextMoves = nextMoves.slice(-1*n, -2);
+
+                if(nextMoves.length!=0){
                     isMovePossible = false;
                     nextMoves.forEach((obj) => {
                         if(obj.uuid === intersects[0].object.uuid) {
@@ -123,7 +111,23 @@ export default function Game() {
                     });
                 }
 
-                console.log(isMovePossible);
+                if(!isMovePossible && currDraggedObj.player=='vulture'){
+                    var killMoves = allNextMoves.slice(-2);
+                   
+                    isMovePossible = false;
+                    killMoves.forEach((obj) => {
+                        if(obj.uuid === intersects[0].object.uuid) {
+                            isMovePossible = true;
+                            return;
+                        };
+                    });
+
+                    if(isMovePossible){
+                        
+                    }
+                    
+                }
+                
 
                 if(isMovePossible){
                     currDraggedObj.position.x = intersects[0].object.x;
@@ -131,17 +135,44 @@ export default function Game() {
                     currDraggedObj.x = intersects[0].object.x;
                     currDraggedObj.y = intersects[0].object.y;
                     intersects[0].object.isOccupied = true;
-                    intersects[0].object.player = currDraggedObj.player;
-                    nextMoves = undefined;
+                    if(currDraggedObj.currPos!=undefined){
+                        currDraggedObj.currPos.isOccupied = false;
+                    }
+                    currDraggedObj.currPos = intersects[0].object;
+                    if(currDraggedObj.player=='crow') currDraggedObj.nextMoves = intersects[0].object.crowMoves;
+                    else currDraggedObj.nextMoves = intersects[0].object.vultureMoves;
+
+                    if(!crowsTurn) {
+                        game.scene.remove(playerBoard.board);
+                        playerBoard = new PlayerBoard('CROW\'S TURN!');
+                    }
+                    else {
+                        game.scene.remove(playerBoard.board);
+                        playerBoard = new PlayerBoard('VULTURE\'S TURN');
+                    }
+                    game.scene.add(playerBoard.board);
+
+                    crowsTurn = !crowsTurn;
                 }
             }
-            currDraggedObj=undefined;
+
+            if(!crowsTurn && vulturePlayer.nextMoves.length!=0){
+                var didCrowsWin = true;
+                vulturePlayer.nextMoves.forEach((obj) => {
+                    if(obj.isOccupied == false){
+                        didCrowsWin = false;
+                    }
+                })
+                if(didCrowsWin){ 
+                    game.scene.remove(game.scene.children[3]); 
+                    game.scene.remove(game.scene.children[4]); 
+                    game.scene.remove(playerBoard.board);
+                    game.scene.add(new WinnerBoard('CROWS').board);
+                }
+            }
+            
         }
         window.addEventListener("mouseup", onMouseUp, false);
-
-        
-        // window.addEventListener("mousemove", onMouseMove, false);
-
     }, []);
 
     return (
