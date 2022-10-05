@@ -15,7 +15,7 @@ function exportMouseInfo() {
     const blob = new Blob([fileData], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.download = "user-info.json";
+    link.download = "mouse_events.json";
     link.href = url;
     link.click();
 }
@@ -217,6 +217,9 @@ export default function Game() {
                     game.scene.remove(game.scene.children[4]); 
                     game.scene.remove(playerBoard.board);
                     game.scene.add(new WinnerBoard('CROWS').board);
+                    window.addEventListener("mouseup", (event) => {
+                        event.stopImmediatePropagation();
+                    }, true);
                     exportMouseInfo();
                 }
             }else if(crowsTurn){
@@ -225,6 +228,9 @@ export default function Game() {
                     game.scene.remove(game.scene.children[4]); 
                     game.scene.remove(playerBoard.board);
                     game.scene.add(new WinnerBoard('VULTURE').board);
+                    window.addEventListener("mouseup", (event) => {
+                        event.stopImmediatePropagation();
+                    }, true);
                     exportMouseInfo();
                 }
             }
