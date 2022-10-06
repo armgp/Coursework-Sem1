@@ -47,11 +47,61 @@ export default function Game() {
         window.localStorage.clear();
         var gameStarted = false;
         var i=0;
+        
         game.scene.add(new StartBoard().board);
+
+        const listener = new THREE.AudioListener();
+        game.camera.add(listener);
+    
+        const audioLoader = new THREE.AudioLoader();
+
+        const startkaooa = new THREE.Audio(listener);
+        audioLoader.load('src/assets/startkaooa.mp3', (buffer) => {
+            startkaooa.setBuffer(buffer);
+            startkaooa.setLoop(false);
+            startkaooa.setVolume(1.0);
+        });
+
+        const crowswon = new THREE.Audio(listener);
+        audioLoader.load('src/assets/crowswon.mp3', (buffer) => {
+            crowswon.setBuffer(buffer);
+            crowswon.setLoop(false);
+            crowswon.setVolume(1.0);
+        });
+
+        const killcrow = new THREE.Audio(listener);
+        audioLoader.load('src/assets/killcrow.mp3', (buffer) => {
+            killcrow.setBuffer(buffer);
+            killcrow.setLoop(false);
+            killcrow.setVolume(1.0);
+        });
+
+        const movecorrect = new THREE.Audio(listener);
+        audioLoader.load('src/assets/movecorrect.mp3', (buffer) => {
+            movecorrect.setBuffer(buffer);
+            movecorrect.setLoop(false);
+            movecorrect.setVolume(1.0);
+        });
+
+        const movewrong = new THREE.Audio(listener);
+        audioLoader.load('src/assets/movewrong.mp3', (buffer) => {
+            movewrong.setBuffer(buffer);
+            movewrong.setLoop(false);
+            movewrong.setVolume(1.0);
+        });
+
+        const vulturewon = new THREE.Audio(listener);
+        audioLoader.load('src/assets/vulturewon.mp3', (buffer) => {
+            vulturewon.setBuffer(buffer);
+            vulturewon.setLoop(false);
+            vulturewon.setVolume(1.0);
+        });
+
         const onMouseClick = (event) => {
             mouseEvents.push([`MouseEvents${i}`, "clicked"]);
             i++;
             if(!gameStarted){
+                startkaooa.play();
                 gameStarted = true;
                 game.scene.remove(game.scene.children[3]);
                 game.scene.add(kboard.board);
@@ -76,8 +126,6 @@ export default function Game() {
                 
                 const animateBoard = () => {
                     if(kboard.board.scale.x < 1) {
-                        // kboard.board.rotation.x += 0.01;
-                        // kboard.board.rotation.y += 0.01;
                         kboard.board.rotation.z += 0.003;
                         requestAnimationFrame(animateBoard);
                     }
@@ -87,7 +135,6 @@ export default function Game() {
                 animateEntry();
                 game.scene.add(playerBoard.board);
             }
-            console.log(gameStarted);
         }
         window.addEventListener("click", onMouseClick, false);
         
@@ -130,13 +177,13 @@ export default function Game() {
             raycaster.setFromCamera(mouse, game.camera);
             const intersects = raycaster.intersectObjects(kboard.hiddenTiles.children);
             if(intersects.length>0 && !intersects[0].object.isOccupied){
-                var allNextMoves = currDraggedObj.nextMoves;
+                var allNextMoves = [];
+                if(currDraggedObj.nextMoves) allNextMoves = currDraggedObj.nextMoves;
                 var n = allNextMoves.length;
                 var nextMoves = allNextMoves;
                 var isMovePossible = true;
-                var isKillMovePossible = true;
 
-                if(currDraggedObj.player == 'vulture') nextMoves = nextMoves.slice(-1*n, -2);
+                if(currDraggedObj.player == 'vulture' && nextMoves.length!=0) nextMoves = nextMoves.slice(-1*n, -2);
 
                 if(nextMoves.length!=0){
                     isMovePossible = false;
@@ -155,7 +202,7 @@ export default function Game() {
                         var obj = killMoves[i];
                         if(obj.uuid === intersects[0].object.uuid){
                             if(i==0 && nextMoves[1].isOccupied){
-                                //killed -> nextMoves[1].currPlayer
+                                killcrow.play();
                                 nextMoves[1].isOccupied = false;
                                 nextMoves[1].currPlayer.position.x = killedPosX;
                                 killedPosX+=10;
@@ -163,7 +210,7 @@ export default function Game() {
                                 vultureKills++;
                                 isMovePossible = true;
                             }else if(i==1 && nextMoves[0].isOccupied){
-                                //illed -> nextMoves[0]
+                                killcrow.play();
                                 nextMoves[0].isOccupied = false;
                                 nextMoves[0].currPlayer.position.x = killedPosX;
                                 killedPosX+=10;
@@ -178,6 +225,7 @@ export default function Game() {
                 
 
                 if(isMovePossible){
+                    movecorrect.play();
                     currDraggedObj.position.x = intersects[0].object.x;
                     currDraggedObj.position.y = intersects[0].object.y;
                     currDraggedObj.x = intersects[0].object.x;
@@ -202,8 +250,9 @@ export default function Game() {
                     game.scene.add(playerBoard.board);
 
                     crowsTurn = !crowsTurn;
-                }
-            }
+                }else movewrong.play();
+
+            }else movewrong.play();
 
             if(!crowsTurn && vulturePlayer.nextMoves.length!=0){
                 var didCrowsWin = true;
@@ -220,6 +269,7 @@ export default function Game() {
                     window.addEventListener("mouseup", (event) => {
                         event.stopImmediatePropagation();
                     }, true);
+                    crowswon.play();
                     exportMouseInfo();
                 }
             }else if(crowsTurn){
@@ -231,6 +281,7 @@ export default function Game() {
                     window.addEventListener("mouseup", (event) => {
                         event.stopImmediatePropagation();
                     }, true);
+                    vulturewon.play();
                     exportMouseInfo();
                 }
             }
