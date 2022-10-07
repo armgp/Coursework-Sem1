@@ -29,4 +29,9 @@ export default class StartBoard {
         });
     }
 
+    animateBoard = () => {
+        this.board.rotation.y+=0.003;
+        requestAnimationFrame(this.animateBoard);
+    };
+
 }
