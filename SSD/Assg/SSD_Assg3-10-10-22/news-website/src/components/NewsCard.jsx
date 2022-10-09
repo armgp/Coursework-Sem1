@@ -6,7 +6,7 @@ const NewsCard = (props) => {
       id={props.id}
       className="px-2 md:px-6 my-3 max-w-xl text-slate-700 dark:text-white flex flex-col items-center"
     >
-      <div className="max-w-xl min-h-[700px] text-left flex flex-col items-center justify-center md:p-4 md:border border-slate-300 dark:border-slate-600 rounded-xl">
+      <div className="max-w-l min-h-[700px] text-left flex flex-col items-center justify-center md:p-4 md:border border-slate-300 dark:border-slate-600 rounded-xl">
         <div className="w-full rounded-xl flex-col xl:flex-row bg-white dark:bg-slate-900 shadow-md">
           <div className="rounded-t-xl w-full shadow-sm bg-cover">
             <img src={props.urlToImage} />
