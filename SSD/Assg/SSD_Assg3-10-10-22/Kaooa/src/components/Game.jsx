@@ -63,11 +63,11 @@ export default function Game() {
       startkaooa.setVolume(1.0);
     });
 
-    const crowswon = new THREE.Audio(listener);
-    audioLoader.load("src/assets/crowswon.mp3", (buffer) => {
-      crowswon.setBuffer(buffer);
-      crowswon.setLoop(false);
-      crowswon.setVolume(1.0);
+    const won = new THREE.Audio(listener);
+    audioLoader.load("src/assets/won.mp3", (buffer) => {
+      won.setBuffer(buffer);
+      won.setLoop(false);
+      won.setVolume(1.0);
     });
 
     const killcrow = new THREE.Audio(listener);
@@ -154,6 +154,8 @@ export default function Game() {
     var vulturePlayer = kboard.vulturePlayer;
     var killedPosX = -300;
     var vultureKills = 0;
+    var numberOfCrowsOnBoard = 0;
+    var isAllCrowsOnBoard = false;
 
     controls.addEventListener("dragstart", (event) => {
       mouseEvents.push([`MouseEvents${i}`, "drag started"]);
@@ -233,32 +235,46 @@ export default function Game() {
         }
 
         if (isMovePossible) {
-          movecorrect.play();
-          currDraggedObj.position.x = intersects[0].object.x;
-          currDraggedObj.position.y = intersects[0].object.y;
-          currDraggedObj.x = intersects[0].object.x;
-          currDraggedObj.y = intersects[0].object.y;
-          intersects[0].object.isOccupied = true;
-          intersects[0].object.currPlayer = currDraggedObj;
-          if (currDraggedObj.currPos != undefined) {
-            currDraggedObj.currPos.isOccupied = false;
-          }
-          currDraggedObj.currPos = intersects[0].object;
-          if (currDraggedObj.player == "crow")
-            currDraggedObj.nextMoves = intersects[0].object.crowMoves;
-          else currDraggedObj.nextMoves = intersects[0].object.vultureMoves;
+          if (
+            currDraggedObj.player == "vulture" ||
+            (currDraggedObj.player == "crow" && isAllCrowsOnBoard) ||
+            (currDraggedObj.player == "crow" &&
+              currDraggedObj.currPos == undefined)
+          ) {
+            movecorrect.play();
+            currDraggedObj.position.x = intersects[0].object.x;
+            currDraggedObj.position.y = intersects[0].object.y;
+            currDraggedObj.x = intersects[0].object.x;
+            currDraggedObj.y = intersects[0].object.y;
+            intersects[0].object.isOccupied = true;
+            intersects[0].object.currPlayer = currDraggedObj;
 
-          if (!crowsTurn) {
-            game.scene.remove(playerBoard.board);
-            playerBoard = new PlayerBoard("CROW'S TURN!");
-          } else {
-            game.scene.remove(playerBoard.board);
-            playerBoard = new PlayerBoard("VULTURE'S TURN");
-          }
-          game.scene.add(playerBoard.board);
+            if (numberOfCrowsOnBoard < 7 && currDraggedObj.player == "crow")
+              numberOfCrowsOnBoard++;
 
-          crowsTurn = !crowsTurn;
-        } else movewrong.play();
+            if (numberOfCrowsOnBoard == 7 && !isAllCrowsOnBoard)
+              isAllCrowsOnBoard = true;
+
+            if (currDraggedObj.currPos != undefined) {
+              currDraggedObj.currPos.isOccupied = false;
+            }
+            currDraggedObj.currPos = intersects[0].object;
+            if (currDraggedObj.player == "crow")
+              currDraggedObj.nextMoves = intersects[0].object.crowMoves;
+            else currDraggedObj.nextMoves = intersects[0].object.vultureMoves;
+
+            if (!crowsTurn) {
+              game.scene.remove(playerBoard.board);
+              playerBoard = new PlayerBoard("CROW'S TURN!");
+            } else {
+              game.scene.remove(playerBoard.board);
+              playerBoard = new PlayerBoard("VULTURE'S TURN");
+            }
+            game.scene.add(playerBoard.board);
+
+            crowsTurn = !crowsTurn;
+          } else movewrong.play();
+        }
       } else movewrong.play();
 
       if (!crowsTurn && vulturePlayer.nextMoves.length != 0) {
@@ -282,7 +298,7 @@ export default function Game() {
             },
             true
           );
-          crowswon.play();
+          won.play();
           exportMouseInfo();
         }
       } else if (crowsTurn) {
@@ -300,7 +316,7 @@ export default function Game() {
             },
             true
           );
-          vulturewon.play();
+          won.play();
           exportMouseInfo();
         }
       }
