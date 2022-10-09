@@ -5,7 +5,6 @@ import Wallstreet from "./components/Wallstreet";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import "./App.css";
 import SearchBar from "./components/SearchBar";
-import Advertisement from "./components/Advertisement";
 
 function App() {
   return (
