@@ -32,7 +32,7 @@ public:
 } tracker;
 
 unordered_map <string, string> UsersMap;
-unordered_map <string, int> LoggedUsers;
+unordered_map <string, struct sockaddr*> LoggedUsers;
 
 /* utils */
 Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
@@ -181,7 +181,7 @@ void* server(void *arg){
             if(UsersMap.find(userId) != UsersMap.end() && 
                LoggedUsers.find(userId)==LoggedUsers.end() && 
                UsersMap[userId] == password){
-                LoggedUsers[userId] = 1;
+                LoggedUsers[userId] = address;
                 cout<<"<LOGGED IN AS>: "<<userId<<"\n";
                 send(newSocketFd, "<LOGGED IN>", 12, 0);
             }else if(UsersMap.find(userId) != UsersMap.end() && LoggedUsers.find(userId)!=LoggedUsers.end()){
@@ -192,7 +192,22 @@ void* server(void *arg){
                 cout<<"<INVALID CREDENTIALS>\n";
                 send(newSocketFd, "<INVALID CREDENTIALS>", 22, 0);
             }
-        }else{
+        }
+        
+        //logout
+        else if(command[0] == "logout"){
+            string userid = command[1];
+            if(UsersMap.find(userid) == UsersMap.end()){
+                cout<<"<USER NOT LOGGED IN>\n";
+                send(newSocketFd, "<USER NOT LOGGED IN>", 21, 0);
+            }else{
+                UsersMap.erase(userid);
+                cout<<"<"<<userid<<" LOGGED OUT>\n";
+                send(newSocketFd, "<LOGGED OUT>", 21, 0);
+            }
+        }
+
+        else{
             cout<<request<<"\n";
         }
 
@@ -249,6 +264,8 @@ struct Client clientConstructor(int domain, int type, int protocol, int port, u_
 
 void client(string req, string ip, int port) {
     struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+
+    //send request to tracker server(listening at tracer.port)
     client.request(&client, ip, tracker.port, req);
 }
 

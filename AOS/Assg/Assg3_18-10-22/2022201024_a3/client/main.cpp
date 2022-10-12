@@ -214,8 +214,10 @@ void client(string req, string ip, int port) {
         }
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         char* res = client.request(&client, tracker.ip, tracker.port, req);
-        cout<<"\t\t----["<<res<<"]----\n";
-    }else if(command[0] == "login"){
+        cout<<"====["<<res<<"]====\n";
+    }
+    
+    else if(command[0] == "login"){
         if(command.size() != 3){
             cout<<"Invalid number of arguments. Try => create_user <user_id> <password>\n";
             return;
@@ -223,12 +225,36 @@ void client(string req, string ip, int port) {
         if(userid.size()==0){
             struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
             char* res = client.request(&client, tracker.ip, tracker.port, req);
-            cout<<"\t\t----["<<res<<"]----\n";
-            userid = command[1];
+            cout<<"====["<<res<<"]====\n";
+            string response(res);
+            if(response=="<LOGGED IN>") {
+                userid = command[1];
+            }
         }else{
-            cout<<"\t\t----[<ALREADY LOGGED IN AS>: "<<userid<<"]----\n";
+            cout<<"====[<ALREADY LOGGED IN AS>: "<<userid<<"]====\n";
         }
     }
+    
+    else if(command[0] == "logout"){
+        if(userid.size() == 0){
+            cout<<"====[<NO USER FOUND>]====\n";
+        }else{
+            string ui = userid;
+            struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            req+=" ";
+            req+=userid;
+            char* res = client.request(&client, tracker.ip, tracker.port, req);
+            string response(res);
+
+            if(response == "<LOGGED OUT>"){
+                userid = "";
+                cout<<"====[<"<<ui<<" LOGGED OUT>]====\n";
+            }else{
+                cout<<"====["<<response<<"]====\n";
+            }
+        }
+    }
+    
     else{
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         client.request(&client, ip, client.port, req);
@@ -249,6 +275,7 @@ int main(int n, char* argv[]){
 
     // Logger::Info("%d", 3);
     pthread_t serverThread;
+    
     int* p = &port;
     pthread_create(&serverThread, NULL, server, (void *)p);
 
