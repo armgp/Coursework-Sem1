@@ -219,7 +219,7 @@ void client(string req, string ip, int port) {
     
     else if(command[0] == "login"){
         if(command.size() != 3){
-            cout<<"Invalid number of arguments. Try => create_user <user_id> <password>\n";
+            cout<<"Invalid number of arguments. Try => login <user_id> <password>\n";
             return;
         }
         if(userid.size()==0){
@@ -236,6 +236,12 @@ void client(string req, string ip, int port) {
     }
     
     else if(command[0] == "logout"){
+
+        if(command.size() != 1){
+            cout<<"Invalid number of arguments. Try => logout\n";
+            return;
+        }
+
         if(userid.size() == 0){
             cout<<"====[<NO USER FOUND>]====\n";
         }else{
@@ -244,8 +250,8 @@ void client(string req, string ip, int port) {
             req+=" ";
             req+=userid;
             char* res = client.request(&client, tracker.ip, tracker.port, req);
+            
             string response(res);
-
             if(response == "<LOGGED OUT>"){
                 userid = "";
                 cout<<"====[<"<<ui<<" LOGGED OUT>]====\n";
@@ -255,6 +261,41 @@ void client(string req, string ip, int port) {
         }
     }
     
+    else if(command[0] == "create_group"){
+        if(command.size() != 2){
+            cout<<"Invalid number of arguments. Try => create_group <group_id>\n";
+            return;
+        }
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        
+        if(userid.size()){
+            req+=" ";
+            req+=userid;
+        }
+
+        
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        string response(res);
+        if(response == "<CREATED GROUP>"){
+            cout<<"====[<GROUP "<<command[1]<<" CREATED>]====\n";
+        }else{
+            cout<<"====["<<response<<"]====\n";
+        }
+
+    }
+
+    else if(command[0] == "list_groups"){
+        if(command.size() != 1){
+            cout<<"Invalid number of arguments. list_groups\n";
+            return;
+        }
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+
+    }
+
     else{
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         client.request(&client, ip, client.port, req);

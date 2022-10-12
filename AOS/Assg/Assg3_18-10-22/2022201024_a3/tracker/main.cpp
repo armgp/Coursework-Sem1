@@ -33,6 +33,7 @@ public:
 
 unordered_map <string, string> UsersMap;
 unordered_map <string, struct sockaddr*> LoggedUsers;
+unordered_map <string, vector<string>> Groups;
 
 /* utils */
 Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
@@ -168,8 +169,9 @@ void* server(void *arg){
                 UsersMap[userId] = password;
                 send(newSocketFd, "<CREATED USER>", 15, 0);
                 cout<<"<CREATED> User:"<<userId<<"\n";
-            }else{
-                send(newSocketFd, "<CREATE USER FAILED>", 21, 0);
+            }
+            else{
+                send(newSocketFd, "<CREATE USER FAILED - USERID ALREADY EXISTS>", 45, 0);
                 cout<<"<CREATE USER FAILED>: User-Id already exists!\n";
             }
         }
@@ -186,7 +188,7 @@ void* server(void *arg){
                 send(newSocketFd, "<LOGGED IN>", 12, 0);
             }else if(UsersMap.find(userId) != UsersMap.end() && LoggedUsers.find(userId)!=LoggedUsers.end()){
                 cout<<"<USER ALREADY LOGGED ON ANOTHER SYSTEM>\n";
-                send(newSocketFd, "<ALREADY LOGGED IN>", 22, 0);
+                send(newSocketFd, "<ALREADY LOGGED IN ANOTHER SYSTEM>", 35, 0);
             }
             else{
                 cout<<"<INVALID CREDENTIALS>\n";
@@ -207,6 +209,31 @@ void* server(void *arg){
             }
         }
 
+        //create_group <group_id>
+        else if(command[0] == "create_group"){
+            if(command.size() != 3){
+                cout<<"<LOGIN TO CREATE A GROUP>\n";
+                send(newSocketFd, "<LOGIN TO CREATE A GROUP>", 26, 0);
+            }else{
+                string groupid = command[1];
+                string userid = command[2];
+                if(Groups.find(groupid) == Groups.end()){
+                    Groups[groupid].push_back(userid);
+                    send(newSocketFd, "<CREATED GROUP>", 16, 0);
+                    cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
+                }
+                else{
+                    send(newSocketFd, "<CREATE GROUP FAILED - GROUPID ALREADY EXISTS>", 47, 0);
+                    cout<<"<CREATE GROUPFAILED>: Group-Id already exists!\n";
+                }
+            }
+        }
+
+        //list_groups
+        else if(command[0] == "list_groups"){
+
+        }
+        
         else{
             cout<<request<<"\n";
         }
