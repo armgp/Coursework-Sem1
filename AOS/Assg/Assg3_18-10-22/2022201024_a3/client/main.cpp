@@ -294,6 +294,9 @@ void client(string req, string ip, int port) {
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         char* res = client.request(&client, tracker.ip, tracker.port, req);
 
+        string response(res);
+        cout<<"====["<<response<<"]====\n";
+
     }
 
     else{

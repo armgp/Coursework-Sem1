@@ -231,9 +231,28 @@ void* server(void *arg){
 
         //list_groups
         else if(command[0] == "list_groups"){
+            string response;
+            if(Groups.size() == 0) response = "";
+            else response = "\n\n";
 
+            int i = 1;
+            for(auto group : Groups){
+                response+=to_string(i++);
+                response+=". ";
+                response+=group.first;
+                response+="\n";
+            }
+            
+            if(response.size() == 0){
+                send(newSocketFd, "<NONE>", 18, 0);
+                cout<<"<NO GROUPS EXIST>\n";
+            }
+            else {
+                response+="\n\n";
+                send(newSocketFd, response.c_str(), response.size(), 0);
+            }
         }
-        
+
         else{
             cout<<request<<"\n";
         }
