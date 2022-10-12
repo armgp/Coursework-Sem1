@@ -7,15 +7,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h> 
-#include <vector>
 #include <jsoncpp/json/value.h>
 #include <jsoncpp/json/json.h>
 #include <fstream>
+#include <vector>
+#include <unordered_map>
 #include "logger.h"
 
 using namespace std;
 
-/* tracker-class */
+
+/* Class Declarations */
 class Tracker {
 public:
     int id;
@@ -29,35 +31,10 @@ public:
     }
 } tracker;
 
+unordered_map <string, string> UsersMap;
+
 /* utils */
-vector<string> processCommand(string s){
-    int n = s.size();
-    int st = 0;
-    vector<string> res;
-    for(int i=0; i<n; i++){
-        if(s[i]==' '){
-            res.push_back(s.substr(st, (i-st)));
-            st = i+1;
-        }
-    }
-    res.push_back(s.substr(st));
-    return res;
-}
-
-void getArgDetails(string& ip, int& port, string& trackerInfoDest, char* arg[]){
-    string ipAndPort = arg[1];
-    trackerInfoDest = arg[2];
-    int n = ipAndPort.size();
-    for(int i=0; i<n; i++){
-        if(ipAndPort[i] == ':'){
-            ip = ipAndPort.substr(0, i);
-            port = atoi(ipAndPort.substr(i+1).c_str());
-            return;
-        }
-    }
-}
-
-Tracker getTrackerDetails(string trackerInfoDest){
+Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
     string jsonfile = "traker_info.json";
     ifstream trackerInfoFile;
     trackerInfoFile.open(trackerInfoDest);
@@ -80,20 +57,35 @@ Tracker getTrackerDetails(string trackerInfoDest){
     Json::Value jsonData;
     Json::Reader reader;
     Json::FastWriter fastWriter; //converts Json::Value to string
+    
 
     reader.parse(jsonFile, jsonData);
-    string id_s = fastWriter.write(jsonData["trackers"][0]["id"]);
-    string ip = fastWriter.write(jsonData["trackers"][0]["ip"]);
+    string id_s = fastWriter.write(jsonData["trackers"][trackerNo-1]["id"]);
+    string ip = fastWriter.write(jsonData["trackers"][trackerNo-1]["ip"]);
     ip.pop_back();
     ip.pop_back();
     ip = ip.substr(1);
-    string port_s = fastWriter.write(jsonData["trackers"][0]["port"]);
+    string port_s = fastWriter.write(jsonData["trackers"][trackerNo-1]["port"]);
     int id = atoi(id_s.c_str());
     int port = atoi(port_s.c_str());
 
     Tracker tracker(id, ip, port);
     remove(jsonfile.c_str());
     return tracker;
+}
+
+vector<string> processCommand(string s){
+    int n = s.size();
+    int st = 0;
+    vector<string> res;
+    for(int i=0; i<n; i++){
+        if(s[i]==' '){
+            res.push_back(s.substr(st, (i-st)));
+            st = i+1;
+        }
+    }
+    res.push_back(s.substr(st));
+    return res;
 }
 
 /* server code */
@@ -144,17 +136,39 @@ struct Server serverConstructor(int domain, int type, int protocol, u_long inter
 
 void* server(void *arg){
     int* port = (int *)arg;
-    cout<<"[Peer Server]:    PORT--> "<<*port<<"\n";
+    cout<<"[Tracker Server]:    PORT--> "<<*port<<"\n";
     struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, *port, 20);
     
     struct sockaddr* address = (struct sockaddr*)&server.address;
     socklen_t addressLen = (socklen_t)sizeof(server.address);
+
     while(true){
         int client = accept(server.socket, address, &addressLen);
         char req[1000];
         memset(req, 0, 1000);
         read(client, req, 1000);
-        printf("%s\n", req);
+        string request(req);
+
+        if(request == "quit"){
+            close(server.socket);
+            break;
+        }
+
+        vector<string> command = processCommand(request);
+
+        if(command[0] == "create_user"){
+            string userId = command[1];
+            string password = command[2];
+            if(UsersMap.find(userId) == UsersMap.end()){
+                UsersMap[userId] = password;
+                cout<<"<CREATED> User:"<<userId<<"\n";
+            }else{
+                cout<<"<CREATE USER FAILED> User-Id already exists!\n";
+            }
+        }else{
+            cout<<request<<"\n";
+        }
+
         close(client);
     }
     return NULL;
@@ -177,7 +191,7 @@ char* request(struct Client *client, string serverIp, int port, string req){
         struct sockaddr_in serverAddress;
         serverAddress.sin_family = client->domain;
         serverAddress.sin_port = htons(port);
-        serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+        serverAddress.sin_addr.s_addr = htonl(client->interface);
 
         inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
         connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
@@ -185,8 +199,13 @@ char* request(struct Client *client, string serverIp, int port, string req){
         send(client->socket, req.c_str(), req.size(), 0);
 
         char* res = (char*)malloc(20000);
-        read(client->socket, res, 20000);
 
+        if(req == "quit"){
+            close(client->socket);
+            return res;
+        }
+
+        read(client->socket, res, 20000);
         return res;
 }
 
@@ -202,48 +221,33 @@ struct Client clientConstructor(int domain, int type, int protocol, int port, u_
 }
 
 void client(string req, string ip, int port) {
-
-    // create_user <user_id> <password>
-    vector<string> command = processCommand(req);
-    if(command[0] == "create_user"){
-        if(command.size() != 3){
-            cout<<"Invalid number of arguments. Try --> create_user <user_id> <password>\n";
-            return;
-        }
-        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-        client.request(&client, tracker.ip, tracker.port, req);
-    }else{
-        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-        client.request(&client, ip, client.port, req);
-    }
-
+    struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+    client.request(&client, ip, tracker.port, req);
 }
 
 /* main function */
 int main(int n, char* argv[]){
-    string ip, trackerInfoDest;
-    int port;
-    getArgDetails(ip, port, trackerInfoDest, argv);
-    tracker = getTrackerDetails(trackerInfoDest);
+    string trackerInfoDest = argv[1];
+    int trackerNo = atoi(argv[2]);
+    tracker = getTrackerDetails(trackerInfoDest, trackerNo);
 
-    //127.0.0.3:2022
-    cout<<"[Tracker Used]:    TrackerId--> "<<tracker.id<<" | IP--> "<<tracker.ip<<" | PORT--> "<<tracker.port<<"\n";
-    cout<<"[Peer Client]:    IP--> "<<ip<<" | PORT--> "<<port<<"\n";
+    cout<<"[Tracker Client]:    TrackerId--> "<<tracker.id<<" | IP--> "<<tracker.ip<<" | PORT--> "<<tracker.port<<"\n";
 
     // Logger::Info("%d", 3);
     pthread_t serverThread;
-    int* p = &port;
+    int* p = &tracker.port;
     pthread_create(&serverThread, NULL, server, (void *)p);
 
     while(true){
         string req;
         getline(cin, req);
-        if(req!="") client(req, ip, port);
+        if(req!="") client(req, tracker.ip, 2021);
+        if(req == "quit") {
+            break; 
+        }
     }
 
     pthread_join(serverThread, NULL);
 
     return 0;
 }
-
-

@@ -1,7 +1,6 @@
 /* includes */
 #include <iostream>
 #include <pthread.h>
-
 // #include <sys/socket.h>
 //#include <netinit/in.h> both subset of #include <netinet/ip.h>
 #include <netinet/ip.h>
@@ -153,12 +152,12 @@ char* request(struct Client *client, string serverIp, string req){
         //----------------
         //This function converts the character string serverIp into a network
         //address structure in the client->domain address family, then copies the
-        //network address structure to serverAddress.sin_adr.  The af argument must be either
-        //AF_INET or AF_INET6.  dst is written in network byte order.
+        //network address structure to serverAddress.sin_adr. 
+        //The client->domain argument must be either AF_INET or AF_INET6.
         inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
         //The connect() system call connects the socket referred to by the
-        //file descriptor client->socket to the address specified by addAddress.The
-        //addrlen argument specifies the size of addr.  The format of the
+        //file descriptor client->socket to the address specified by serverAddress.The
+        //addrlen argument specifies the size of address.  The format of the
         //address in addr is determined by the address space of the socket
         //sockfd
         connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
