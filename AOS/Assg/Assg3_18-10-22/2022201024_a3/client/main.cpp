@@ -29,6 +29,8 @@ public:
     }
 } tracker;
 
+string userid = "";
+
 /* utils */
 vector<string> processCommand(string s){
     int n = s.size();
@@ -144,18 +146,18 @@ struct Server serverConstructor(int domain, int type, int protocol, u_long inter
 
 void* server(void *arg){
     int* port = (int *)arg;
-    cout<<"[Peer Server]:    PORT--> "<<*port<<"\n";
+    cout<<"[Peer Server]:    PORT=> "<<*port<<"\n";
     struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, *port, 20);
     
     struct sockaddr* address = (struct sockaddr*)&server.address;
     socklen_t addressLen = (socklen_t)sizeof(server.address);
     while(true){
-        int client = accept(server.socket, address, &addressLen);
+        int newSocketFd = accept(server.socket, address, &addressLen);
         char req[1000];
         memset(req, 0, 1000);
-        read(client, req, 1000);
+        read(newSocketFd, req, 1000);
         printf("%s\n", req);
-        close(client);
+        close(newSocketFd);
     }
     return NULL;
 }
@@ -203,16 +205,31 @@ struct Client clientConstructor(int domain, int type, int protocol, int port, u_
 
 void client(string req, string ip, int port) {
 
-    // create_user <user_id> <password>
     vector<string> command = processCommand(req);
+
     if(command[0] == "create_user"){
         if(command.size() != 3){
-            cout<<"Invalid number of arguments. Try --> create_user <user_id> <password>\n";
+            cout<<"Invalid number of arguments. Try => create_user <user_id> <password>\n";
             return;
         }
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-        client.request(&client, tracker.ip, tracker.port, req);
-    }else{
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        cout<<"\t\t----["<<res<<"]----\n";
+    }else if(command[0] == "login"){
+        if(command.size() != 3){
+            cout<<"Invalid number of arguments. Try => create_user <user_id> <password>\n";
+            return;
+        }
+        if(userid.size()==0){
+            struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            char* res = client.request(&client, tracker.ip, tracker.port, req);
+            cout<<"\t\t----["<<res<<"]----\n";
+            userid = command[1];
+        }else{
+            cout<<"\t\t----[<ALREADY LOGGED IN AS>: "<<userid<<"]----\n";
+        }
+    }
+    else{
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         client.request(&client, ip, client.port, req);
     }
@@ -227,8 +244,8 @@ int main(int n, char* argv[]){
     tracker = getTrackerDetails(trackerInfoDest);
 
     //127.0.0.3:2022
-    cout<<"[Tracker Used]:    TrackerId--> "<<tracker.id<<" | IP--> "<<tracker.ip<<" | PORT--> "<<tracker.port<<"\n";
-    cout<<"[Peer Client]:    IP--> "<<ip<<" | PORT--> "<<port<<"\n";
+    cout<<"[Tracker Used]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
+    cout<<"[Peer Client]:    IP=> "<<ip<<" | PORT=> "<<port<<"\n";
 
     // Logger::Info("%d", 3);
     pthread_t serverThread;

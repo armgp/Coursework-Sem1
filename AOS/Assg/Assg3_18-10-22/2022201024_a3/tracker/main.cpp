@@ -32,6 +32,7 @@ public:
 } tracker;
 
 unordered_map <string, string> UsersMap;
+unordered_map <string, int> LoggedUsers;
 
 /* utils */
 Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
@@ -136,17 +137,20 @@ struct Server serverConstructor(int domain, int type, int protocol, u_long inter
 
 void* server(void *arg){
     int* port = (int *)arg;
-    cout<<"[Tracker Server]:    PORT--> "<<*port<<"\n";
+    cout<<"[Tracker Server]:    PORT=> "<<*port<<"\n";
     struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, *port, 20);
-    
-    struct sockaddr* address = (struct sockaddr*)&server.address;
-    socklen_t addressLen = (socklen_t)sizeof(server.address);
+
+    // struct sockaddr* address = (struct sockaddr*)&server.address;
+    // socklen_t addressLen = (socklen_t)sizeof(server.address);
+
+    struct sockaddr* address;
+    socklen_t addressLen;
 
     while(true){
-        int client = accept(server.socket, address, &addressLen);
+        int newSocketFd = accept(server.socket, address, &addressLen);
         char req[1000];
         memset(req, 0, 1000);
-        read(client, req, 1000);
+        read(newSocketFd, req, 1000);
         string request(req);
 
         if(request == "quit"){
@@ -156,20 +160,43 @@ void* server(void *arg){
 
         vector<string> command = processCommand(request);
 
+        // create_user <user_id> <password>
         if(command[0] == "create_user"){
             string userId = command[1];
             string password = command[2];
             if(UsersMap.find(userId) == UsersMap.end()){
                 UsersMap[userId] = password;
+                send(newSocketFd, "<CREATED USER>", 15, 0);
                 cout<<"<CREATED> User:"<<userId<<"\n";
             }else{
-                cout<<"<CREATE USER FAILED> User-Id already exists!\n";
+                send(newSocketFd, "<CREATE USER FAILED>", 21, 0);
+                cout<<"<CREATE USER FAILED>: User-Id already exists!\n";
+            }
+        }
+
+        // login <user_id> <password>
+        else if(command[0] == "login"){
+            string userId = command[1];
+            string password = command[2];
+            if(UsersMap.find(userId) != UsersMap.end() && 
+               LoggedUsers.find(userId)==LoggedUsers.end() && 
+               UsersMap[userId] == password){
+                LoggedUsers[userId] = 1;
+                cout<<"<LOGGED IN AS>: "<<userId<<"\n";
+                send(newSocketFd, "<LOGGED IN>", 12, 0);
+            }else if(UsersMap.find(userId) != UsersMap.end() && LoggedUsers.find(userId)!=LoggedUsers.end()){
+                cout<<"<USER ALREADY LOGGED ON ANOTHER SYSTEM>\n";
+                send(newSocketFd, "<ALREADY LOGGED IN>", 22, 0);
+            }
+            else{
+                cout<<"<INVALID CREDENTIALS>\n";
+                send(newSocketFd, "<INVALID CREDENTIALS>", 22, 0);
             }
         }else{
             cout<<request<<"\n";
         }
 
-        close(client);
+        close(newSocketFd);
     }
     return NULL;
 }
@@ -231,7 +258,7 @@ int main(int n, char* argv[]){
     int trackerNo = atoi(argv[2]);
     tracker = getTrackerDetails(trackerInfoDest, trackerNo);
 
-    cout<<"[Tracker Client]:    TrackerId--> "<<tracker.id<<" | IP--> "<<tracker.ip<<" | PORT--> "<<tracker.port<<"\n";
+    cout<<"[Tracker Client]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
 
     // Logger::Info("%d", 3);
     pthread_t serverThread;
