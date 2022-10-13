@@ -64,7 +64,7 @@ public:
 
 unordered_map <string, User> UsersMap;
 unordered_map <string, struct sockaddr*> LoggedUsers;
-unordered_map <string, vector<string>> Groups; //groupId, {userIds}
+unordered_map <string, set<string>> Groups; //groupId, {userIds}
 unordered_map <string, set<string>> GroupsPendingRequestsMap; //groupId, {userids}
 
 /* utils */
@@ -251,7 +251,7 @@ void* server(void *arg){
                 string groupid = command[1];
                 string userid = command[2];
                 if(Groups.find(groupid) == Groups.end()){
-                    Groups[groupid].push_back(userid);
+                    Groups[groupid].insert(userid);
                     send(newSocketFd, "<CREATED GROUP>", 16, 0);
                     cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
                     UsersMap[userid].addToAdminedGroups(groupid);
@@ -304,6 +304,11 @@ void* server(void *arg){
                     send(newSocketFd, "<USER DOESNT EXIST>", 20, 0);
                     cout<<"<ERROR> USER: "<<userId<<" - DOESN'T EXIST\n";
                 }
+
+                else if(Groups[groupId].find(userId) != Groups[groupId].end()){
+                    send(newSocketFd, "<USER ALREADY A PART OF THE GROUP>", 35, 0);
+                    cout<<"<USER ALREADY A PART OF THE GROUP>\n";
+                }
                 
                 else{
                     auto pos = GroupsPendingRequestsMap[groupId].find(userId);
@@ -311,13 +316,51 @@ void* server(void *arg){
                     if(pos != GroupsPendingRequestsMap[groupId].end()){
                         send(newSocketFd, "<REQUEST ALREADY PENDING>", 26, 0);
                         cout<<"<REQUEST ALREADY PENDING>\n";
-                        break;
                     }
 
                     else {
                         GroupsPendingRequestsMap[groupId].insert(userId);
                         send(newSocketFd, "<REQUEST SEND>", 15, 0);
                         cout<<"<REQUEST SENT>\n";
+                    }
+                }
+            }
+        }
+
+        //leave_group <group_id> <user_id>
+        else if(command[0] == "leave_group"){
+            if(command.size() != 3){
+                cout<<"<YOU MUST BE LOGGED IN FOR EXECUTING THIS COMMAND>\n";
+                send(newSocketFd, "<YOU MUST BE LOGGED IN FOR EXECUTING THIS COMMAND>", 51, 0);
+            }else{
+                string groupId = command[1];
+                string userId = command[2];
+                if(Groups.find(groupId) == Groups.end()){
+                    send(newSocketFd, "<GROUP DOESNT EXIST>", 21, 0);
+                    cout<<"<ERROR> Group: "<<groupId<<" - DOESN'T EXIST\n";
+                }
+
+                else if(UsersMap.find(userId) == UsersMap.end()){
+                    send(newSocketFd, "<USER DOESNT EXIST>", 20, 0);
+                    cout<<"<ERROR> USER: "<<userId<<" - DOESN'T EXIST\n";
+                }
+                
+                else{
+                    auto pos = Groups[groupId].find(userId);
+                    if(pos == Groups[groupId].end()){
+                        send(newSocketFd, "<USER IS NOT A PART OF THIS GROUP>", 35, 0);
+                        cout<<"<ERROR> USER: "<<userId<<" - NOT IN THE GROUP\n";
+                    }else{
+                        if((UsersMap[userId].adminedGroups).find(groupId) != (UsersMap[userId].adminedGroups).end()){
+                            send(newSocketFd, "<ADMIN CANNOT LEAVE>", 21, 0);
+                            cout<<"<ERROR> ADMIN: "<<userId<<" - CANNOT LEAVE\n";
+                        }
+                        else{
+                            Groups[groupId].erase(pos);
+                            send(newSocketFd, "<LEFT GROUP>", 35, 0);
+                            cout<<"<LEFT> USER: "<<userId<<" - LEFT THE GROUP\n";
+                        }
+                        
                     }
                 }
             }
@@ -393,7 +436,7 @@ void* server(void *arg){
                         auto pos = GroupsPendingRequestsMap[groupId].find(userId);
                     
                         if(pos != GroupsPendingRequestsMap[groupId].end()){
-                            Groups[groupId].push_back(userId);
+                            Groups[groupId].insert(userId);
                             GroupsPendingRequestsMap[groupId].erase(pos);
                             cout<<"<ACCEPTED>: "<<userId<<"\n";
                             send(newSocketFd, "<USER IS ACCEPTED TO THE GROUP>", 32, 0);
