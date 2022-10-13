@@ -13,6 +13,7 @@
 #include <vector>
 #include <unordered_map>
 #include <set>
+#include <fstream>
 #include "logger.h"
 
 using namespace std;
@@ -65,15 +66,20 @@ public:
 class Group{
 public:
     set<string> userIds;
-    set<string> shareableFiles;
+    set<string> shareableFiles; //filepaths
 };
 
 unordered_map <string, User> UsersMap;
 unordered_map <string, struct sockaddr*> LoggedUsers;
-unordered_map <string, Group> Groups; //groupId, {userIds}
+unordered_map <string, Group> Groups; //groupId, Group
 unordered_map <string, set<string>> GroupsPendingRequestsMap; //groupId, {userids}
 
 /* utils */
+bool doesFileExist(string filePath){
+    ifstream test(filePath); 
+    return test.good();
+}
+
 Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
     string jsonfile = "traker_info.json";
     ifstream trackerInfoFile;
@@ -128,7 +134,6 @@ vector<string> processCommand(string s){
     return res;
 }
 
-/* server code */
 struct Server {
     int domain;
     int type;
@@ -140,39 +145,16 @@ struct Server {
     int socket;
 };
 
-struct Server serverConstructor(int domain, int type, int protocol, u_long interface, int port, int backlog){
+struct Client {
+    int socket;
+    int domain;
+    int type;
+    int protocol;
+    int port;
+    u_long interface;
 
-    struct Server server;
-
-    server.domain = domain;
-    server.type = type;
-    server.protocol = protocol;
-    server.interface = interface;
-    server.port = port;
-    server.backlog = backlog;
-    server.address.sin_family = domain;
-    server.address.sin_port = htons(port);
-    server.address.sin_addr.s_addr = htonl(interface);
-
-    server.socket = socket(domain, type, protocol);
-
-    if(server.socket < 0){
-        perror("Failed to connect to socket\n");
-        exit(1);
-    }
-
-    if((bind(server.socket, (struct sockaddr*)&server.address, sizeof(server.address))) < 0){
-        perror("Failed to bind socket\n");
-        exit(1);
-    }
-
-    if((listen(server.socket, server.backlog)) < 0){
-        perror("Failed to start listening\n");
-        exit(1);
-    }
-
-    return server;
-}
+    char* (*request)(struct Client *client, string serverIp, int port, string req);
+};
 
 struct ThreadParams {
     int newSocketFd;
@@ -461,6 +443,69 @@ void* processClientRequest(void* arg){
             }
         }
 
+        //upload_file <file_path> <group_id> <user_id>
+        else if(command[0] == "upload_file"){
+            if(command.size() != 4){
+                cout<<"<LOGIN TO UPLOAD FILES>\n";
+                send(newSocketFd, "<LOGIN TO UPLOAD FILES>", 24, 0);
+            }
+
+            else{
+                string filePath = command[1];
+                string groupId = command[2];
+                string userId = command[3];
+
+                if(Groups.find(groupId) == Groups.end()){
+                    cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
+                    send(newSocketFd, "<GROUP DOESN'T EXIST>", 22, 0);
+                }
+
+                else if(UsersMap.find(userId) == UsersMap.end()){
+                    cout<<"<ERROR>: USER "<<userId<<" DOESN'T EXIST\n";
+                    send(newSocketFd, "<USER DOESN'T EXIST>", 21, 0);
+                }
+
+                else{
+                    if(Groups[groupId].userIds.find(userId) == Groups[groupId].userIds.end()){
+                        cout<<"<ERROR>: USER "<<userId<<" IS NOT A PART OF THE GROUP "<<groupId<<"\n";
+                        send(newSocketFd, "<USER NOT PART OF THE GROUP>", 29, 0);
+                    }else{
+                        Groups[groupId].shareableFiles.insert(filePath);
+                        cout<<"<UPLOADED>\n";
+                        send(newSocketFd, "<UPLOADED FILE>", 16, 0);
+                    }
+                }
+            }
+
+        }
+
+        //list_files <group_id>
+        else if(command[0] == "list_files"){
+            string groupId = command[1];
+            if(Groups.find(groupId) == Groups.end()){
+                cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
+                send(newSocketFd, "<GROUP DOESN'T EXIST>", 22, 0);
+            }else{
+                if(Groups[groupId].shareableFiles.size() == 0){
+                    cout<<"<NO SHARABLE FILES>\n";
+                    send(newSocketFd, "<NONE>", 7, 0);
+                }
+                
+                else{
+                    string response = "\n\n";
+                    int i = 1;
+                    for(string file : Groups[groupId].shareableFiles){
+                        response+=to_string(i++);
+                        response+=". ";
+                        response+=file;
+                        response+="\n";
+                    }
+                    response+="\n";
+                    send(newSocketFd, response.c_str(), response.size(), 0);
+                }
+            }
+        }
+
         else{
             cout<<request<<"\n";
         }
@@ -469,6 +514,40 @@ void* processClientRequest(void* arg){
         return NULL;
 }
 
+/* server code */
+struct Server serverConstructor(int domain, int type, int protocol, u_long interface, int port, int backlog){
+
+    struct Server server;
+
+    server.domain = domain;
+    server.type = type;
+    server.protocol = protocol;
+    server.interface = interface;
+    server.port = port;
+    server.backlog = backlog;
+    server.address.sin_family = domain;
+    server.address.sin_port = htons(port);
+    server.address.sin_addr.s_addr = htonl(interface);
+
+    server.socket = socket(domain, type, protocol);
+
+    if(server.socket < 0){
+        perror("Failed to connect to socket\n");
+        exit(1);
+    }
+
+    if((bind(server.socket, (struct sockaddr*)&server.address, sizeof(server.address))) < 0){
+        perror("Failed to bind socket\n");
+        exit(1);
+    }
+
+    if((listen(server.socket, server.backlog)) < 0){
+        perror("Failed to start listening\n");
+        exit(1);
+    }
+
+    return server;
+}
 
 void* server(void *arg){
     int* port = (int *)arg;
@@ -479,6 +558,9 @@ void* server(void *arg){
     socklen_t addressLen;
 
     bool status = true;
+
+    ofstream logFile;
+    logFile.open("./tracker_logs.txt");
 
     while(status){
         int newSocketFd = accept(server.socket, address, &addressLen);
@@ -502,17 +584,6 @@ void* server(void *arg){
 
 
 /* client code */
-struct Client {
-    int socket;
-    int domain;
-    int type;
-    int protocol;
-    int port;
-    u_long interface;
-
-    char* (*request)(struct Client *client, string serverIp, int port, string req);
-};
-
 char* request(struct Client *client, string serverIp, int port, string req){
 
         char* res = (char*)malloc(20000);

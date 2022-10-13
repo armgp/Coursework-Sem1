@@ -480,6 +480,48 @@ void client(string req, string ip, int port) {
         cout<<"**********["<<response<<"]**********\n";
     }
 
+    //upload_file <file_path> <group_id>
+    else if(command[0] == "upload_file"){
+        if(command.size() != 3){
+            cout<<"Invalid number of arguments. Try => upload_file <file_path> <group_id>\n";
+            return;
+        }
+
+        if(userid.size() == 0){
+            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            return;
+        }
+
+        req+=" ";
+        req+=userid;
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        string response(res);
+        cout<<"**********["<<response<<"]**********\n";
+    }
+
+    //list_files <group_id>
+    else if(command[0] == "list_files"){
+        if(command.size() != 2){
+            cout<<"Invalid number of arguments. Try => list_files <group_id>\n";
+            return;
+        }
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        string response(res);
+        cout<<"**********["<<response<<"]**********\n";
+    }
+
     else{
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
