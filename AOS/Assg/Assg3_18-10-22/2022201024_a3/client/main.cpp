@@ -176,18 +176,29 @@ struct Client {
 };
 
 char* request(struct Client *client, string serverIp, int port, string req){
+
+        char* res = (char*)malloc(20000);
+
         struct sockaddr_in serverAddress;
         serverAddress.sin_family = client->domain;
         serverAddress.sin_port = htons(port);
         serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 
         inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
-        connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
+        if(connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1){
+            cout<<"!! ERROR - CANNOT CONNECT SOCKET TO HOST !!\n";
+            return res;
+        }
 
-        send(client->socket, req.c_str(), req.size(), 0);
+        if(send(client->socket, req.c_str(), req.size(), 0) == -1){
+            cout<<"!! ERROR - SENDING FROM REQ BUFFER TO CLIENT SOCKET FAILED !!\n";
+            return res;
+        }
 
-        char* res = (char*)malloc(20000);
-        read(client->socket, res, 20000);
+        if(read(client->socket, res, 20000) == -1){
+            cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
+            return res;
+        }
 
         return res;
 }
@@ -213,6 +224,10 @@ void client(string req, string ip, int port) {
             return;
         }
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         cout<<"====["<<res<<"]====\n";
     }
@@ -224,6 +239,10 @@ void client(string req, string ip, int port) {
         }
         if(userid.size()==0){
             struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            if(client.socket == -1){
+                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
             char* res = client.request(&client, tracker.ip, tracker.port, req);
             cout<<"====["<<res<<"]====\n";
             string response(res);
@@ -247,6 +266,10 @@ void client(string req, string ip, int port) {
         }else{
             string ui = userid;
             struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            if(client.socket == -1){
+                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
             req+=" ";
             req+=userid;
             char* res = client.request(&client, tracker.ip, tracker.port, req);
@@ -268,6 +291,10 @@ void client(string req, string ip, int port) {
         }
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
         
         if(userid.size()){
             req+=" ";
@@ -292,6 +319,10 @@ void client(string req, string ip, int port) {
         }
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
         char* res = client.request(&client, tracker.ip, tracker.port, req);
 
         string response(res);
@@ -301,6 +332,10 @@ void client(string req, string ip, int port) {
 
     else{
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
         client.request(&client, ip, client.port, req);
     }
 
@@ -321,7 +356,9 @@ int main(int n, char* argv[]){
     pthread_t serverThread;
     
     int* p = &port;
-    pthread_create(&serverThread, NULL, server, (void *)p);
+    if(pthread_create(&serverThread, NULL, server, (void *)p) != 0){
+        cout<<"!! ERROR - CANNOT CREATE SERVER THREAD !!\n";
+    }
 
     while(true){
         string req;
@@ -329,7 +366,9 @@ int main(int n, char* argv[]){
         if(req!="") client(req, ip, port);
     }
 
-    pthread_join(serverThread, NULL);
+    if(pthread_join(serverThread, NULL) != 0){
+        cout<<"!! ERROR - PTHREAD_JOIN FAILED !!\n";
+    }
 
     return 0;
 }

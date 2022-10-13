@@ -17,7 +17,7 @@
 using namespace std;
 
 
-/* Class Declarations */
+/* Data */
 class Tracker {
 public:
     int id;
@@ -276,24 +276,37 @@ struct Client {
 };
 
 char* request(struct Client *client, string serverIp, int port, string req){
+
+        char* res = (char*)malloc(20000);
+
         struct sockaddr_in serverAddress;
         serverAddress.sin_family = client->domain;
         serverAddress.sin_port = htons(port);
         serverAddress.sin_addr.s_addr = htonl(client->interface);
 
         inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
-        connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
-
-        send(client->socket, req.c_str(), req.size(), 0);
-
-        char* res = (char*)malloc(20000);
-
-        if(req == "quit"){
-            close(client->socket);
+        if(connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1){
+            cout<<"!! ERROR - CANNOT CONNECT SOCKET TO HOST !!\n";
             return res;
         }
 
-        read(client->socket, res, 20000);
+        if(send(client->socket, req.c_str(), req.size(), 0) == -1){
+            cout<<"!! ERROR - SENDING FROM REQ BUFFER TO CLIENT SOCKET FAILED !!\n";
+            return res;
+        }
+
+        if(req == "quit"){
+            if(close(client->socket) == -1){
+                cout<<"!! ERROR - CLOSING SOCKET FILE DESCRIPTOR !!\n";
+            }
+            return res;
+        }
+
+        if(read(client->socket, res, 20000) == -1){
+            cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
+            return res;
+        }
+
         return res;
 }
 
@@ -310,7 +323,10 @@ struct Client clientConstructor(int domain, int type, int protocol, int port, u_
 
 void client(string req, string ip, int port) {
     struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-
+    if(client.socket == -1){
+        cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+        return;
+    }
     //send request to tracker server(listening at tracer.port)
     client.request(&client, ip, tracker.port, req);
 }
@@ -326,7 +342,9 @@ int main(int n, char* argv[]){
     // Logger::Info("%d", 3);
     pthread_t serverThread;
     int* p = &tracker.port;
-    pthread_create(&serverThread, NULL, server, (void *)p);
+    if(pthread_create(&serverThread, NULL, server, (void *)p) != 0){
+        cout<<"!! ERROR - CANNOT CREATE SERVER THREAD !!\n";
+    }
 
     while(true){
         string req;
@@ -337,7 +355,9 @@ int main(int n, char* argv[]){
         }
     }
 
-    pthread_join(serverThread, NULL);
+    if(pthread_join(serverThread, NULL) != 0){
+        cout<<"!! ERROR - PTHREAD_JOIN FAILED !!\n";
+    }
 
     return 0;
 }
