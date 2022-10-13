@@ -218,6 +218,7 @@ void client(string req, string ip, int port) {
 
     vector<string> command = processCommand(req);
 
+    // create_user <user_id> <password>
     if(command[0] == "create_user"){
         if(command.size() != 3){
             cout<<"Invalid number of arguments. Try => create_user <user_id> <password>\n";
@@ -229,9 +230,10 @@ void client(string req, string ip, int port) {
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req);
-        cout<<"====["<<res<<"]====\n";
+        cout<<"**********["<<res<<"]**********\n";
     }
     
+    // login <user_id> <password>
     else if(command[0] == "login"){
         if(command.size() != 3){
             cout<<"Invalid number of arguments. Try => login <user_id> <password>\n";
@@ -244,16 +246,17 @@ void client(string req, string ip, int port) {
                 return;
             }
             char* res = client.request(&client, tracker.ip, tracker.port, req);
-            cout<<"====["<<res<<"]====\n";
+            cout<<"**********["<<res<<"]**********\n";
             string response(res);
             if(response=="<LOGGED IN>") {
                 userid = command[1];
             }
         }else{
-            cout<<"====[<ALREADY LOGGED IN AS>: "<<userid<<"]====\n";
+            cout<<"**********[<ALREADY LOGGED IN AS>: "<<userid<<"]**********\n";
         }
     }
     
+    //logout
     else if(command[0] == "logout"){
 
         if(command.size() != 1){
@@ -262,7 +265,7 @@ void client(string req, string ip, int port) {
         }
 
         if(userid.size() == 0){
-            cout<<"====[<NO USER FOUND>]====\n";
+            cout<<"**********[<NO USER FOUND>]**********\n";
         }else{
             string ui = userid;
             struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
@@ -277,13 +280,14 @@ void client(string req, string ip, int port) {
             string response(res);
             if(response == "<LOGGED OUT>"){
                 userid = "";
-                cout<<"====[<"<<ui<<" LOGGED OUT>]====\n";
+                cout<<"**********[<"<<ui<<" LOGGED OUT>]**********\n";
             }else{
-                cout<<"====["<<response<<"]====\n";
+                cout<<"**********["<<response<<"]**********\n";
             }
         }
     }
     
+    //create_group <group_id>
     else if(command[0] == "create_group"){
         if(command.size() != 2){
             cout<<"Invalid number of arguments. Try => create_group <group_id>\n";
@@ -305,16 +309,17 @@ void client(string req, string ip, int port) {
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         string response(res);
         if(response == "<CREATED GROUP>"){
-            cout<<"====[<GROUP "<<command[1]<<" CREATED>]====\n";
+            cout<<"**********[<GROUP "<<command[1]<<" CREATED>]**********\n";
         }else{
-            cout<<"====["<<response<<"]====\n";
+            cout<<"**********["<<response<<"]**********\n";
         }
 
     }
 
+    //list_groups
     else if(command[0] == "list_groups"){
         if(command.size() != 1){
-            cout<<"Invalid number of arguments. list_groups\n";
+            cout<<"Invalid number of arguments. Try => list_groups\n";
             return;
         }
 
@@ -326,7 +331,58 @@ void client(string req, string ip, int port) {
         char* res = client.request(&client, tracker.ip, tracker.port, req);
 
         string response(res);
-        cout<<"====["<<response<<"]====\n";
+        cout<<"**********["<<response<<"]**********\n";
+
+    }
+
+    //join_group <group_id>
+    else if(command[0] == "join_group"){
+        if(command.size() != 2){
+            cout<<"Invalid number of arguments. Try => join_group <group_id>\n";
+            return;
+        }
+
+        if(userid.size() == 0){
+            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            return;
+        }
+
+        req+=" ";
+        req+=userid;
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        string response(res);
+        cout<<"**********["<<response<<"]**********\n";
+    }
+
+    //list_requests <group_id>
+    else if(command[0] == "list_requests"){
+        if(command.size() != 2){
+            cout<<"Invalid number of arguments. Try => list_requests <group_id>\n";
+            return;
+        }
+
+        if(userid.size() == 0){
+            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            return;
+        }
+
+        req+=" ";
+        req+=userid;
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        string response(res);
+        cout<<"**********["<<response<<"]**********\n";
 
     }
 

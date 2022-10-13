@@ -31,9 +31,40 @@ public:
     }
 } tracker;
 
-unordered_map <string, string> UsersMap;
+class User {
+public:
+    string uid;
+    string password;
+    unordered_map<string, int> joinedGroups;
+    unordered_map<string, int> adminedGroups;
+
+    User(){
+
+    }
+
+    User(string _uid, string _password){
+        uid = _uid;
+        password = _password;
+    }
+
+    int joinGroup(string groupId){
+        if(joinedGroups.find(groupId) != joinedGroups.end()) return -1;
+        joinedGroups[groupId] = 1;
+        return 0;
+    }
+
+    int addToAdminedGroups(string groupId){
+        if(adminedGroups.find(groupId) != adminedGroups.end()) return -1;
+        adminedGroups[groupId] = 1;
+        return 0;
+    }
+
+};
+
+unordered_map <string, User> UsersMap;
 unordered_map <string, struct sockaddr*> LoggedUsers;
-unordered_map <string, vector<string>> Groups;
+unordered_map <string, vector<string>> Groups; //groupId, {userIds}
+unordered_map <string, vector<string>> GroupsPendingRequestsMap; //groupId, {userids}
 
 /* utils */
 Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
@@ -166,7 +197,8 @@ void* server(void *arg){
             string userId = command[1];
             string password = command[2];
             if(UsersMap.find(userId) == UsersMap.end()){
-                UsersMap[userId] = password;
+                User user(userId, password);
+                UsersMap[userId] = user;
                 send(newSocketFd, "<CREATED USER>", 15, 0);
                 cout<<"<CREATED> User:"<<userId<<"\n";
             }
@@ -182,7 +214,7 @@ void* server(void *arg){
             string password = command[2];
             if(UsersMap.find(userId) != UsersMap.end() && 
                LoggedUsers.find(userId)==LoggedUsers.end() && 
-               UsersMap[userId] == password){
+               UsersMap[userId].password == password){
                 LoggedUsers[userId] = address;
                 cout<<"<LOGGED IN AS>: "<<userId<<"\n";
                 send(newSocketFd, "<LOGGED IN>", 12, 0);
@@ -203,13 +235,13 @@ void* server(void *arg){
                 cout<<"<USER NOT LOGGED IN>\n";
                 send(newSocketFd, "<USER NOT LOGGED IN>", 21, 0);
             }else{
-                UsersMap.erase(userid);
+                LoggedUsers.erase(userid);
                 cout<<"<"<<userid<<" LOGGED OUT>\n";
                 send(newSocketFd, "<LOGGED OUT>", 21, 0);
             }
         }
 
-        //create_group <group_id>
+        //create_group <group_id> <user_id>
         else if(command[0] == "create_group"){
             if(command.size() != 3){
                 cout<<"<LOGIN TO CREATE A GROUP>\n";
@@ -221,6 +253,7 @@ void* server(void *arg){
                     Groups[groupid].push_back(userid);
                     send(newSocketFd, "<CREATED GROUP>", 16, 0);
                     cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
+                    UsersMap[userid].addToAdminedGroups(groupid);
                 }
                 else{
                     send(newSocketFd, "<CREATE GROUP FAILED - GROUPID ALREADY EXISTS>", 47, 0);
@@ -248,8 +281,83 @@ void* server(void *arg){
                 cout<<"<NO GROUPS EXIST>\n";
             }
             else {
-                response+="\n\n";
+                response+="\n";
                 send(newSocketFd, response.c_str(), response.size(), 0);
+            }
+        }
+
+        //join_group <group_id> <user_id>
+        else if(command[0] == "join_group"){
+            if(command.size() != 3){
+                cout<<"<LOGIN TO CREATE A GROUP>\n";
+                send(newSocketFd, "<LOGIN TO CREATE A GROUP>", 26, 0);
+            }else{
+                string groupId = command[1];
+                string userId = command[2];
+                if(Groups.find(groupId) == Groups.end()){
+                    send(newSocketFd, "<GROUP DOESNT EXIST>", 21, 0);
+                    cout<<"<ERROR> Group: "<<groupId<<" - DOESN'T EXIST\n";
+                }
+
+                else if(UsersMap.find(userId) == UsersMap.end()){
+                    send(newSocketFd, "<USER DOESNT EXIST>", 20, 0);
+                    cout<<"<ERROR> USER: "<<userId<<" - DOESN'T EXIST\n";
+                }
+                
+                else{
+                    bool reqExist = false;
+                    for(string uid : GroupsPendingRequestsMap[groupId]){
+                        if(uid == userId){
+                            send(newSocketFd, "<REQUEST ALREADY PENDING>", 26, 0);
+                            cout<<"<REQUEST ALREADY PENDING>\n";
+                            reqExist = true;
+                            break;
+                        }
+                    }
+
+                    if(!reqExist){
+                        GroupsPendingRequestsMap[groupId].push_back(userId);
+                        send(newSocketFd, "<REQUEST SEND>", 15, 0);
+                        cout<<"<REQUEST SENT>\n";
+                    }
+                }
+            }
+        }
+
+        //list_requests <group_id> <user_id>
+        else if(command[0] == "list_requests"){
+            if(command.size() != 3){
+                cout<<"<LOGIN TO CREATE A GROUP>\n";
+                send(newSocketFd, "<LOGIN TO CREATE A GROUP>", 26, 0);
+            }else{
+                string groupId = command[1];
+                string userId = command[2];
+                User user = UsersMap[userId];
+
+                if(Groups.find(groupId) == Groups.end()){
+                    cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
+                    send(newSocketFd, "<GROUP DOESN'T EXIST>", 52, 0);
+                }
+                else if((user.adminedGroups).find(groupId) == (user.adminedGroups).end()){
+                    cout<<"<ERROR>: ONLY ADMIN OF THE GROUP CAN LIST REQUESTS\n";
+                    send(newSocketFd, "<ONLY ADMIN OF THIS GROUP CAN SEE PENDING REQUESTS>", 52, 0);
+                }else{
+                    if(GroupsPendingRequestsMap.find(groupId) == GroupsPendingRequestsMap.end()){
+                        cout<<"<NO PENDING REQUESTS>\n";
+                        send(newSocketFd, "<NONE>", 7, 0);
+                    }else{
+                        string response = "\n\n";
+                        int i = 1;
+                        for(string uid : GroupsPendingRequestsMap[groupId]){
+                            response+=to_string(i++);
+                            response+=". ";
+                            response+=uid;
+                            response+="\n";
+                        }
+                        response+="\n";
+                        send(newSocketFd, response.c_str(), response.size(), 0);
+                    }
+                }
             }
         }
 
