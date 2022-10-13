@@ -392,6 +392,24 @@ void client(string req, string ip, int port) {
             cout<<"Invalid number of arguments. Try => accept_request <group_id> <user_id>\n";
             return;
         }
+
+        if(userid.size() == 0){
+            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            return;
+        }
+
+        req+=" ";
+        req+=userid;
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        string response(res);
+        cout<<"**********["<<response<<"]**********\n";
+
     }
 
     else{

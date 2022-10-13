@@ -3,6 +3,9 @@
     "fstream": "cpp",
     "iostream": "cpp",
     "istream": "cpp",
-    "stop_token": "cpp"
+    "stop_token": "cpp",
+    "deque": "cpp",
+    "string": "cpp",
+    "vector": "cpp"
   }
 }

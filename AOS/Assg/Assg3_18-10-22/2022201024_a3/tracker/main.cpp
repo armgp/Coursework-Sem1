@@ -12,6 +12,7 @@
 #include <fstream>
 #include <vector>
 #include <unordered_map>
+#include <set>
 #include "logger.h"
 
 using namespace std;
@@ -64,7 +65,7 @@ public:
 unordered_map <string, User> UsersMap;
 unordered_map <string, struct sockaddr*> LoggedUsers;
 unordered_map <string, vector<string>> Groups; //groupId, {userIds}
-unordered_map <string, vector<string>> GroupsPendingRequestsMap; //groupId, {userids}
+unordered_map <string, set<string>> GroupsPendingRequestsMap; //groupId, {userids}
 
 /* utils */
 Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
@@ -305,18 +306,16 @@ void* server(void *arg){
                 }
                 
                 else{
-                    bool reqExist = false;
-                    for(string uid : GroupsPendingRequestsMap[groupId]){
-                        if(uid == userId){
-                            send(newSocketFd, "<REQUEST ALREADY PENDING>", 26, 0);
-                            cout<<"<REQUEST ALREADY PENDING>\n";
-                            reqExist = true;
-                            break;
-                        }
+                    auto pos = GroupsPendingRequestsMap[groupId].find(userId);
+
+                    if(pos != GroupsPendingRequestsMap[groupId].end()){
+                        send(newSocketFd, "<REQUEST ALREADY PENDING>", 26, 0);
+                        cout<<"<REQUEST ALREADY PENDING>\n";
+                        break;
                     }
 
-                    if(!reqExist){
-                        GroupsPendingRequestsMap[groupId].push_back(userId);
+                    else {
+                        GroupsPendingRequestsMap[groupId].insert(userId);
                         send(newSocketFd, "<REQUEST SEND>", 15, 0);
                         cout<<"<REQUEST SENT>\n";
                     }
@@ -342,7 +341,8 @@ void* server(void *arg){
                     cout<<"<ERROR>: ONLY ADMIN OF THE GROUP CAN LIST REQUESTS\n";
                     send(newSocketFd, "<ONLY ADMIN OF THIS GROUP CAN SEE PENDING REQUESTS>", 52, 0);
                 }else{
-                    if(GroupsPendingRequestsMap.find(groupId) == GroupsPendingRequestsMap.end()){
+                    if(GroupsPendingRequestsMap.find(groupId) == GroupsPendingRequestsMap.end() || 
+                        GroupsPendingRequestsMap[groupId].size() == 0){
                         cout<<"<NO PENDING REQUESTS>\n";
                         send(newSocketFd, "<NONE>", 7, 0);
                     }else{
@@ -389,20 +389,19 @@ void* server(void *arg){
                         cout<<"<ERROR>: "<<admin<<" IS NOT THE ADMIN\n";
                         send(newSocketFd, "<CURRENT SESSION DOESN'T HAVE AUTHORIZATION OVER THIS GROUP>", 61, 0);
                     }else{
-                        bool isUserPending = false;
-                        for(string uid : GroupsPendingRequestsMap[groupId]){
-                            if(uid == userId){
-                                isUserPending = true;
-                                break;
-                            }
-                        }
-                        if(isUserPending){
+                       
+                        auto pos = GroupsPendingRequestsMap[groupId].find(userId);
+                    
+                        if(pos != GroupsPendingRequestsMap[groupId].end()){
                             Groups[groupId].push_back(userId);
+                            GroupsPendingRequestsMap[groupId].erase(pos);
                             cout<<"<ACCEPTED>: "<<userId<<"\n";
-                            send(newSocketFd, "<USER IS ACCEPTED TO THE GROUP>", 21, 0);
-                        }else{
+                            send(newSocketFd, "<USER IS ACCEPTED TO THE GROUP>", 32, 0);
+                        }
+
+                        else{
                             cout<<"<ERROR>: NO PENDING REQUESTS OF "<<userId<<" FOUND\n";
-                            send(newSocketFd, "<NO PENDING REQUESTS FOUND>", 21, 0);
+                            send(newSocketFd, "<NO PENDING REQUESTS FOUND>", 28, 0);
                         }
                     }
                 }
