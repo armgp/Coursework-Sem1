@@ -386,6 +386,14 @@ void client(string req, string ip, int port) {
 
     }
 
+    //accept_request <group_id> <user_id>
+    else if(command[0] == "accept_request"){
+        if(command.size() != 3){
+            cout<<"Invalid number of arguments. Try => accept_request <group_id> <user_id>\n";
+            return;
+        }
+    }
+
     else{
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){

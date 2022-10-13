@@ -361,6 +361,54 @@ void* server(void *arg){
             }
         }
 
+        //accept_request <group_id> <user_id> <admin_user_id>
+        else if(command[0] == "accept_request"){
+            if(command.size() != 4){
+                cout<<"<LOGIN TO SENT ACCEPT REQUEST>\n";
+                send(newSocketFd, "<LOGIN TO SENT ACCEPT REQUEST>", 31, 0);
+            }
+
+            else{
+                string groupId = command[1];
+                string userId = command[2];
+                string admin = command[3];
+
+                if(Groups.find(groupId) == Groups.end()){
+                    cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
+                    send(newSocketFd, "<GROUP DOESN'T EXIST>", 22, 0);
+                }
+
+                else if(UsersMap.find(userId) == UsersMap.end()){
+                    cout<<"<ERROR>: USER "<<userId<<" DOESN'T EXIST\n";
+                    send(newSocketFd, "<USER DOESN'T EXIST>", 21, 0);
+                }
+
+                else {
+                    User adminUser = UsersMap[admin];
+                    if(adminUser.adminedGroups.find(groupId) == adminUser.adminedGroups.end()){
+                        cout<<"<ERROR>: "<<admin<<" IS NOT THE ADMIN\n";
+                        send(newSocketFd, "<CURRENT SESSION DOESN'T HAVE AUTHORIZATION OVER THIS GROUP>", 61, 0);
+                    }else{
+                        bool isUserPending = false;
+                        for(string uid : GroupsPendingRequestsMap[groupId]){
+                            if(uid == userId){
+                                isUserPending = true;
+                                break;
+                            }
+                        }
+                        if(isUserPending){
+                            Groups[groupId].push_back(userId);
+                            cout<<"<ACCEPTED>: "<<userId<<"\n";
+                            send(newSocketFd, "<USER IS ACCEPTED TO THE GROUP>", 21, 0);
+                        }else{
+                            cout<<"<ERROR>: NO PENDING REQUESTS OF "<<userId<<" FOUND\n";
+                            send(newSocketFd, "<NO PENDING REQUESTS FOUND>", 21, 0);
+                        }
+                    }
+                }
+            }
+        }
+
         else{
             cout<<request<<"\n";
         }
