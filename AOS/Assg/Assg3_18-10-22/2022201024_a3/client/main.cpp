@@ -11,11 +11,15 @@
 #include <jsoncpp/json/value.h>
 #include <jsoncpp/json/json.h>
 #include <fstream>
+#include <sys/stat.h>
 #include "logger.h"
 
 using namespace std;
 
-/* tracker-class */
+/* defines */
+#define DESTDIR "/home/user/Documents/Coursework/AOS/Assg/Assg3_18-10-22/2022201024_a3/client"
+
+/* data */
 class Tracker {
 public:
     int id;
@@ -30,6 +34,7 @@ public:
 } tracker;
 
 string userid = "";
+vector<string> createdDirectories;
 
 /* utils */
 vector<string> processCommand(string s){
@@ -98,6 +103,36 @@ Tracker getTrackerDetails(string trackerInfoDest){
     return tracker;
 }
 
+int createUserDirectory(string userId){
+    string destinationDirectory = DESTDIR;
+    string path=destinationDirectory+"/"+userId;
+    string pathDownloads = path+"/downloads";
+    string pathUploads = path+"/uploads";
+    mode_t perms = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
+    int d = mkdir(path.c_str(), perms);
+    int dd = mkdir(pathDownloads.c_str(), perms);
+    int du = mkdir(pathUploads.c_str(), perms);
+    if (d==-1 || dd==-1 || du==-1){
+        return 1;
+    }
+    createdDirectories.insert(createdDirectories.begin(), pathDownloads);
+    createdDirectories.insert(createdDirectories.begin(), pathUploads);
+    createdDirectories.push_back(path);
+    return 0;
+}
+
+void deleteAllDirs(){
+    int stat = 0;
+    for(string path : createdDirectories) {
+        stat+=rmdir(path.c_str());
+    }
+    if(stat<0){
+        cout<<"**********[<ERROR WHILE CREATING CLIENT DIRECTORY>]**********\n";
+    }else{
+        cout<<"**********[<SUCCESSFULLY CLEANED CLIENT DIRECTORY>]**********\n";
+    }
+}
+
 /* server code */
 struct Server {
     int domain;
@@ -156,6 +191,8 @@ void* server(void *arg){
         char req[1000];
         memset(req, 0, 1000);
         read(newSocketFd, req, 1000);
+        string request(req);
+
         printf("%s\n", req);
         close(newSocketFd);
     }
@@ -231,6 +268,12 @@ void client(string req, string ip, int port) {
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         cout<<"**********["<<res<<"]**********\n";
+        string response(res);
+        if(response == "<CREATED USER>"){
+            if(createUserDirectory(command[1]) == 1){
+                cout<<"**********[<ERROR WHILE CREATING CLIENT DIRECTORY>]**********\n";
+            }
+        }
     }
     
     // login <user_id> <password>
@@ -450,6 +493,7 @@ void client(string req, string ip, int port) {
 
 /* main function */
 int main(int n, char* argv[]){
+
     string ip, trackerInfoDest;
     int port;
     getArgDetails(ip, port, trackerInfoDest, argv);
