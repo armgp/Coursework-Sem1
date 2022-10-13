@@ -89,8 +89,7 @@ Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
     string content = "";
 
     int i = 0;
-    for(i=0; !trackerInfoFile.eof(); i++) 
-    content += trackerInfoFile.get();
+    for(i=0; !trackerInfoFile.eof(); i++) content += trackerInfoFile.get();
     trackerInfoFile.close();
     content.erase(content.end()-1);  
     i--;
@@ -161,6 +160,7 @@ struct ThreadParams {
     struct Server server;
     sockaddr* address;
     bool* status;
+    ofstream* logFile;
 };
 
 void* processClientRequest(void* arg){
@@ -194,6 +194,10 @@ void* processClientRequest(void* arg){
                 UsersMap[userId] = user;
                 send(newSocketFd, "<CREATED USER>", 15, 0);
                 cout<<"<CREATED> User:"<<userId<<"\n";
+
+                //updating logs
+                request+="\n";
+                *(params->logFile) << request;
             }
             else{
                 send(newSocketFd, "<CREATE USER FAILED - USERID ALREADY EXISTS>", 45, 0);
@@ -211,10 +215,18 @@ void* processClientRequest(void* arg){
                 LoggedUsers[userId] = address;
                 cout<<"<LOGGED IN AS>: "<<userId<<"\n";
                 send(newSocketFd, "<LOGGED IN>", 12, 0);
-            }else if(UsersMap.find(userId) != UsersMap.end() && LoggedUsers.find(userId)!=LoggedUsers.end()){
+
+                //updating logs
+                request+="\n";
+                *(params->logFile) << request;
+
+            }
+            
+            else if(UsersMap.find(userId) != UsersMap.end() && LoggedUsers.find(userId)!=LoggedUsers.end()){
                 cout<<"<USER ALREADY LOGGED ON ANOTHER SYSTEM>\n";
                 send(newSocketFd, "<ALREADY LOGGED IN ANOTHER SYSTEM>", 35, 0);
             }
+
             else{
                 cout<<"<INVALID CREDENTIALS>\n";
                 send(newSocketFd, "<INVALID CREDENTIALS>", 22, 0);
@@ -227,10 +239,16 @@ void* processClientRequest(void* arg){
             if(UsersMap.find(userid) == UsersMap.end()){
                 cout<<"<USER NOT LOGGED IN>\n";
                 send(newSocketFd, "<USER NOT LOGGED IN>", 21, 0);
-            }else{
+            }
+            
+            else{
                 LoggedUsers.erase(userid);
                 cout<<"<"<<userid<<" LOGGED OUT>\n";
                 send(newSocketFd, "<LOGGED OUT>", 21, 0);
+
+                //updating logs
+                request+="\n";
+                *(params->logFile) << request;
             }
         }
 
@@ -247,6 +265,10 @@ void* processClientRequest(void* arg){
                     send(newSocketFd, "<CREATED GROUP>", 16, 0);
                     cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
                     UsersMap[userid].addToAdminedGroups(groupid);
+
+                    //updating logs
+                    request+="\n";
+                    *(params->logFile) << request;
                 }
                 else{
                     send(newSocketFd, "<CREATE GROUP FAILED - GROUPID ALREADY EXISTS>", 47, 0);
@@ -314,6 +336,10 @@ void* processClientRequest(void* arg){
                         GroupsPendingRequestsMap[groupId].insert(userId);
                         send(newSocketFd, "<REQUEST SEND>", 15, 0);
                         cout<<"<REQUEST SENT>\n";
+
+                        //updating logs
+                        request+="\n";
+                        *(params->logFile) << request;
                     }
                 }
             }
@@ -351,6 +377,10 @@ void* processClientRequest(void* arg){
                             Groups[groupId].userIds.erase(pos);
                             send(newSocketFd, "<LEFT GROUP>", 35, 0);
                             cout<<"<LEFT> USER: "<<userId<<" - LEFT THE GROUP\n";
+
+                            //updating logs
+                            request+="\n";
+                            *(params->logFile) << request;
                         }
                         
                     }
@@ -432,6 +462,10 @@ void* processClientRequest(void* arg){
                             GroupsPendingRequestsMap[groupId].erase(pos);
                             cout<<"<ACCEPTED>: "<<userId<<"\n";
                             send(newSocketFd, "<USER IS ACCEPTED TO THE GROUP>", 32, 0);
+
+                            //updating logs
+                            request+="\n";
+                            *(params->logFile) << request;
                         }
 
                         else{
@@ -473,6 +507,10 @@ void* processClientRequest(void* arg){
                         Groups[groupId].shareableFiles.insert(filePath);
                         cout<<"<UPLOADED>\n";
                         send(newSocketFd, "<UPLOADED FILE>", 16, 0);
+
+                        //updating logs
+                        request+="\n";
+                        *(params->logFile) << request;
                     }
                 }
             }
@@ -569,6 +607,7 @@ void* server(void *arg){
         params.server = server;
         params.address = address;
         params.status = &status;
+        params.logFile = &logFile;
         pthread_t clientReqHandleThread;
         int* p = &tracker.port;
         if(pthread_create(&clientReqHandleThread, NULL, processClientRequest, &params) != 0){
@@ -578,6 +617,8 @@ void* server(void *arg){
             cout<<"!! ERROR - PTHREAD_JOIN FAILED !!\n";
         }    
     }
+
+    logFile.close();
 
     return NULL;
 }
