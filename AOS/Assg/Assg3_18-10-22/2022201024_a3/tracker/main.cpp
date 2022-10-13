@@ -175,10 +175,10 @@ struct Server serverConstructor(int domain, int type, int protocol, u_long inter
 }
 
 struct ThreadParams {
-    // struct BoundedBuffer b;
     int newSocketFd;
     struct Server server;
     sockaddr* address;
+    bool* status;
 };
 
 void* processClientRequest(void* arg){
@@ -187,6 +187,9 @@ void* processClientRequest(void* arg){
         int newSocketFd = params->newSocketFd;
         struct Server server = params->server;
         sockaddr* address = params->address;
+        bool* status = params->status;
+
+        if(!(*status)) return NULL;
 
         char req[1000];
         memset(req, 0, 1000);
@@ -195,6 +198,7 @@ void* processClientRequest(void* arg){
 
         if(request == "quit"){
             close(server.socket);
+            *status = false;
         }
 
         vector<string> command = processCommand(request);
@@ -471,24 +475,28 @@ void* server(void *arg){
     cout<<"[Tracker Server]:    PORT=> "<<*port<<"\n";
     struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, *port, 20);
 
-    // struct sockaddr* address = (struct sockaddr*)&server.address;
-    // socklen_t addressLen = (socklen_t)sizeof(server.address);
-
     struct sockaddr* address;
     socklen_t addressLen;
 
-    while(true){
+    bool status = true;
+
+    while(status){
         int newSocketFd = accept(server.socket, address, &addressLen);
         struct ThreadParams params;
         params.newSocketFd = newSocketFd;
         params.server = server;
         params.address = address;
+        params.status = &status;
         pthread_t clientReqHandleThread;
         int* p = &tracker.port;
         if(pthread_create(&clientReqHandleThread, NULL, processClientRequest, &params) != 0){
-            cout<<"!! ERROR - CANNOT CREATE SERVER THREAD !!\n";
+            cout<<"!! ERROR - CANNOT CREATE NEW THREAD FOR CLIENT !!\n";
         }
+        if(pthread_join(clientReqHandleThread, NULL) != 0){
+            cout<<"!! ERROR - PTHREAD_JOIN FAILED !!\n";
+        }    
     }
+
     return NULL;
 }
 
