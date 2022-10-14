@@ -19,7 +19,7 @@
 using namespace std;
 
 
-/* Data */
+/* data */
 class Tracker {
 public:
     int id;
