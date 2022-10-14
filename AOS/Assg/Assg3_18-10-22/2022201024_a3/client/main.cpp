@@ -37,11 +37,56 @@ public:
 
 string userid = "";
 
-unordered_map<string ,vector<pair<bool, int>>> fileMap; //filepath -> bitmap
+unordered_map<string, vector<pair<bool, int>>> fileMap; //fileName -> bitmap
+unordered_map<string, string> fileLocMap; // fileName -> filePath
 
 vector<string> createdDirectories;
 
 /* utils */
+string convertBitMapToString(vector<pair<bool, int>> bitMap){
+    string res="";
+    for(pair<bool, int> p : bitMap){
+        int status = p.first;
+        res+=to_string(status);
+        res+=" ";
+        res+=to_string(p.second);
+        res+=" ";
+    }
+    res.pop_back();
+    return res;
+}
+
+vector<pair<bool, int>> convertStringToBitMap(string str){
+    vector<pair<bool, int>> res;
+    vector<bool> boolArr;
+    vector<int> intArr;
+    int n = str.size();
+    int st = 0;
+    int iorb = true;
+    for(int i=0; i<=n; i++){
+        if(i==n || str[i]== ' '){
+            string bi = str.substr(st, i-st);
+            int val = stoi(bi);
+            st = i+1;
+            if(iorb){
+                boolArr.push_back(val);
+                iorb = !iorb;
+            }else{
+                intArr.push_back(val);
+                iorb = !iorb;
+            }
+        }
+    }
+
+    int m = boolArr.size();
+    for(int i=0; i<m; i++){
+        res.push_back(make_pair(boolArr[i], intArr[i]));
+    }
+
+    return res;
+
+}
+
 string getFileName(string filePath){
     int n = filePath.size();
     for(int i=n-1; i>=0; i--){
@@ -208,7 +253,21 @@ void server(int port){
         read(newSocketFd, req, 1000);
         string request(req);
 
-        printf("%s\n", req);
+        vector<string> commands = processCommand(request);
+        if(commands[0] == "getbitmap"){
+            string fileName = commands[1];
+            string filePath = fileLocMap[fileName];
+            vector<pair<bool, int>> bitmap = fileMap[fileName];
+            string stringBitmap = convertBitMapToString(bitmap);
+
+
+            cout<<"<BITMAP SEND>\n";
+            cout<<stringBitmap<<"\n\n";
+            send(newSocketFd, stringBitmap.c_str(), stringBitmap.size(), 0);
+        }
+        else{
+            printf("%s\n", req);
+        }
         close(newSocketFd);
     }
 }
@@ -560,7 +619,8 @@ void client(string req, string ip, int port) {
             }
 
             // cout<<"FILE SIZE = "<<sz<<"No of Chunks = "<<noOfChunks<<" No of bytes left = "<<bytesLeft<<"\n";
-            fileMap[buffer] = bitmap;
+            fileMap[fileName] = bitmap;
+            fileLocMap[fileName] = buffer;
         }
     }
 
@@ -594,7 +654,9 @@ void client(string req, string ip, int port) {
         }
 
         char buf[PATH_MAX]; 
+        memset(buf, 0, PATH_MAX);
         char *result = realpath(command[3].c_str(), buf);
+        
         if(!result){
             cout<<"**********[<DESTINATION NOT FOUND>]**********\n";
             return;
@@ -608,25 +670,73 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
+
+
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         string response(res);
-        cout<<"**********[<USERS WITH FILE>: "<<response<<"]**********\n";
+        int sz = response.size();
 
-        //considering response only has one user id
-        string peer1 = response;
-        client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-        if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-            return;
+        if(response == "<ERROR1>"){
+            cout<<"**********[<GROUP DOESN'T EXIST>]**********\n";
+        }else if(response == "<ERROR2>"){
+            cout<<"**********[<FILE DOESN'T EXIST IN THE GROUP>]**********\n";
+        }else if(response == "<ERROR3>"){
+            cout<<"**********[<USER NOT A MEMBER OF THE GROUP>]**********\n";
+        }else{
+
+            cout<<"**********[<USERS WITH FILE>: "<<response<<"]**********\n";
+
+            //
+            //considering response only has one user id
+            //
+            string peer1 = response;
+            struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            if(client2.socket == -1){
+                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+    
+            //space important after "getuserdetails "
+            string getUserDets = "getuserdetails ";
+            getUserDets+=peer1;
+            char* res2 = client2.request(&client2, tracker.ip, tracker.port, getUserDets);
+            string response2(res2);
+            vector<string> dets = processCommand(response2);
+            string peerIp = dets[0];
+            int peerPort = stoi(dets[1]);
+            cout<<dets[0]<<" :: "<<peerPort<<"\n";
+
+            struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+            if(client3.socket == -1){
+                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+
+            string getFileBitMapReq = "getbitmap ";
+            string fileName = command[2];
+            getFileBitMapReq+=fileName;
+            char* res3 = client.request(&client3, peerIp, peerPort, getFileBitMapReq);
+            string stringBitMap(res3);
+            vector<pair<bool, int>> bitMap = convertStringToBitMap(stringBitMap);
+            cout<<"<BITMAP RECEIVED>\n";
+            for(pair<bool, int> p : bitMap){
+                cout<<p.first<<" "<<p.second<<" ";
+            }
+            cout<<"\n";
+
+            memset(res, 0, 20000);
+            memset(res2, 0, 20000);
+            memset(res3, 0, 20000);
+            // client = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+            // if(client.socket == -1){
+            //     cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            //     return;
+            // }
+
+            // string downloadFileReq = "download ";
+            // downloadFileReq+=fileName;
+            // char* res4 = client.request(&client, peerIp, peerPort, downloadFileReq);
         }
-
-        string getUserDets = "getuserdetails ";
-        getUserDets+=peer1;
-        char* res2 = client.request(&client, tracker.ip, tracker.port, getUserDets);
-        string response2(res2);
-        vector<string> dets = processCommand(response2);
-        int peerPort = stoi(dets[1]);
-        cout<<dets[0]<<" :: "<<peerPort<<"\n";
     }
 
     else{

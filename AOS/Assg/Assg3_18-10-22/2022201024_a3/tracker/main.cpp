@@ -212,9 +212,9 @@ void processClientRequest(struct ThreadParams params){
         // create_user <user_id> <password> 
         if(command[0] == "create_user"){
 
-            if(command.size() != 5){
-                cout<<"<PORT AND IP DETAILS ARE NOT ATTATCHED>\n";
-                send(newSocketFd, "<PORT AND IPDETAILS ARE NOT ATTATCHED>", 26, 0);
+            if(command.size() != 3){
+                cout<<"<INVALID NO OF ARGS>\n";
+                send(newSocketFd, "<INVALID NO OF ARGS>", 21, 0);
             }
 
             else{
@@ -576,21 +576,20 @@ void processClientRequest(struct ThreadParams params){
 
                 if(Groups.find(groupId) == Groups.end()){
                     cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
-                    send(newSocketFd, "<GROUP DOESN'T EXIST>", 22, 0);
+                    send(newSocketFd, "<ERROR1>", 9, 0);
                 }
 
                 else if(Groups[groupId].shareableFiles.find(fileName) == Groups[groupId].shareableFiles.end()){
                     cout<<"<ERROR>: FILE DOESN'T EXIST IN THE GROUP\n";
-                    send(newSocketFd, "<FILE DOESN'T EXIST IN THE GROUP>", 52, 0);
+                    send(newSocketFd, "<ERROR2>", 9, 0);
                 }
 
                 else if(Groups[groupId].userIds.find(userId) == Groups[groupId].userIds.end()){
                     cout<<"<ERROR>: USER NOT A MEMBER OF THE GROUP\n";
-                    send(newSocketFd, "<USER NOT A MEMBER OF THE GROUP>", 33, 0);
+                    send(newSocketFd, "<ERROR3>", 9, 0);
                 }
 
                 else{
-                    cout<<"<SEND>: META DATA SUCCESFULLY FORWARDED\n";
                     vector<string> userIds = (Groups[groupId].shareableFiles)[fileName];
                     string res = "";
                     for(string uid : userIds){
@@ -601,6 +600,7 @@ void processClientRequest(struct ThreadParams params){
                     }
                     res.pop_back();
                     send(newSocketFd, res.c_str(), res.size(), 0);
+                    cout<<"<SEND>: META DATA SUCCESFULLY FORWARDED\n";
                 }
 
             }
@@ -610,11 +610,18 @@ void processClientRequest(struct ThreadParams params){
         else if(command[0] == "getuserdetails"){
             string uid = command[1];
             string res = "";
-            res+=UsersMap[uid].ip;
-            res+=" ";
-            res+=to_string(UsersMap[uid].port);
-            cout<<"<SEND>: USER DATA SUCCESFULLY FORWARDED\n";
-            send(newSocketFd, res.c_str(), res.size(), 0);
+
+            if(UsersMap.find(uid) == UsersMap.end()){
+                cout<<"<ERROR>: USER NOT FOUND -> "<<uid<<"\n";
+                send(newSocketFd, "<USER NOT FOUND>", 17, 0);
+            }
+            else{
+                res+=UsersMap[uid].ip;
+                res+=" ";
+                res+=to_string(UsersMap[uid].port);
+                cout<<"<SEND>: USER DATA SUCCESFULLY FORWARDED\n";
+                send(newSocketFd, res.c_str(), res.size(), 0);
+            }
         }
 
         else{
