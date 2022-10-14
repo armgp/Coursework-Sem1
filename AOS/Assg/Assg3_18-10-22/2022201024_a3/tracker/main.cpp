@@ -37,9 +37,12 @@ struct SharedFile{
     string filepath;
     vector<bool> bitmap;
 
-    SharedFile(string path, vector<bool> bm){
+    SharedFile(){
+
+    }
+
+    SharedFile(string path){
         filepath = path;
-        bitmap = bm;
     }
 };
 
@@ -47,20 +50,20 @@ class User {
 public:
     string uid;
     string password;
+    string ip;
     int port;
     bool live = false;
     unordered_map<string, int> joinedGroups;
     unordered_map<string, int> adminedGroups;
-    unordered_map<string, vector<bool>> files; //filepath -> bitmap
+    unordered_map<string, struct SharedFile> files; //filename -> SharedFile
 
     User(){
 
     }
 
-    User(string _uid, string _password, string _port){
+    User(string _uid, string _password){
         uid = _uid;
         password = _password;
-        port = stoi(_port);
     }
 
     int joinGroup(string groupId){
@@ -82,13 +85,24 @@ public:
     string adminUserId;
     set<string> userIds;
     set<string> pendingRequests; //userids
-    unordered_map<string, vector<string>> shareableFiles; //filepath-> {userids}
+    unordered_map<string, vector<string>> shareableFiles; //filename-> <vector>userids
 };
 
 unordered_map <string, User> UsersMap;
 unordered_map <string, Group> Groups; //groupId, Group
 
 /* utils */
+string getFileName(string filePath){
+    int n = filePath.size();
+    for(int i=n-1; i>=0; i--){
+        if(filePath[i] == '/'){
+            return filePath.substr(i+1);
+        }
+    }
+
+    return filePath;
+}
+
 bool doesFileExist(string filePath){
     ifstream test(filePath); 
     return test.good();
@@ -195,20 +209,20 @@ void processClientRequest(struct ThreadParams params){
 
         vector<string> command = processCommand(request);
 
-        // create_user <user_id> <password> <peer_port>
+        // create_user <user_id> <password> 
         if(command[0] == "create_user"){
 
-            if(command.size() != 4){
-                cout<<"<PORT DETAILS ARE NOT ATTATCHED>\n";
-                send(newSocketFd, "<PORT DETAILS ARE NOT ATTATCHED>", 26, 0);
+            if(command.size() != 5){
+                cout<<"<PORT AND IP DETAILS ARE NOT ATTATCHED>\n";
+                send(newSocketFd, "<PORT AND IPDETAILS ARE NOT ATTATCHED>", 26, 0);
             }
 
             else{
                 string userId = command[1];
                 string password = command[2];
-                string peerPort = command[3];
+     
                 if(UsersMap.find(userId) == UsersMap.end()){
-                    User user(userId, password, peerPort);
+                    User user(userId, password);
                     UsersMap[userId] = user;
                     send(newSocketFd, "<CREATED USER>", 15, 0);
                     cout<<"<CREATED> User:"<<userId<<"\n";
@@ -220,14 +234,20 @@ void processClientRequest(struct ThreadParams params){
             }
         }
 
-        // login <user_id> <password>
+        // login <user_id> <password> <peer_port> <peer_ip>
         else if(command[0] == "login"){
             string userId = command[1];
             string password = command[2];
+            string peerPort = command[3];
+            string peerIp = command[4];
+
             if(UsersMap.find(userId) != UsersMap.end() && 
                UsersMap[userId].live == false && 
                UsersMap[userId].password == password){
+
                 UsersMap[userId].live = true;
+                UsersMap[userId].ip = peerIp;
+                UsersMap[userId].port = stoi(peerPort);
                 cout<<"<LOGGED IN AS>: "<<userId<<"\n";
                 send(newSocketFd, "<LOGGED IN>", 12, 0);
             }
@@ -253,6 +273,8 @@ void processClientRequest(struct ThreadParams params){
             
             else{
                 UsersMap[userid].live = false;
+                UsersMap[userid].ip = "";
+                UsersMap[userid].port = 0;
                 cout<<"<"<<userid<<" LOGGED OUT>\n";
                 send(newSocketFd, "<LOGGED OUT>", 21, 0);
             }
@@ -267,8 +289,10 @@ void processClientRequest(struct ThreadParams params){
                 string groupid = command[1];
                 string userid = command[2];
                 if(Groups.find(groupid) == Groups.end()){
-                    Groups[groupid].userIds.insert(userid);
-                    Groups[groupid].adminUserId = userid;
+                    Group newGroup;
+                    newGroup.userIds.insert(userid);
+                    newGroup.adminUserId = userid;
+                    Groups[groupid] = newGroup;
                     send(newSocketFd, "<CREATED GROUP>", 16, 0);
                     cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
                     UsersMap[userid].addToAdminedGroups(groupid);
@@ -395,7 +419,7 @@ void processClientRequest(struct ThreadParams params){
 
                 if(Groups.find(groupId) == Groups.end()){
                     cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
-                    send(newSocketFd, "<GROUP DOESN'T EXIST>", 52, 0);
+                    send(newSocketFd, "<GROUP DOESN'T EXIST>", 22, 0);
                 }
                 else if( Groups[groupId].adminUserId != userId){
                     cout<<"<ERROR>: ONLY ADMIN OF THE GROUP CAN LIST REQUESTS\n";
@@ -444,7 +468,7 @@ void processClientRequest(struct ThreadParams params){
 
                 else {
                     User adminUser = UsersMap[admin];
-                    if(Groups[groupId].adminUserId != userId){
+                    if(Groups[groupId].adminUserId != admin){
                         cout<<"<ERROR>: "<<admin<<" IS NOT THE ADMIN\n";
                         send(newSocketFd, "<CURRENT SESSION DOESN'T HAVE AUTHORIZATION OVER THIS GROUP>", 61, 0);
                     }else{
@@ -494,10 +518,14 @@ void processClientRequest(struct ThreadParams params){
                         cout<<"<ERROR>: USER "<<userId<<" IS NOT A PART OF THE GROUP "<<groupId<<"\n";
                         send(newSocketFd, "<USER NOT PART OF THE GROUP>", 29, 0);
                     }else{
-                        Groups[groupId].shareableFiles[filePath].push_back(userId);
+                        string fileName = getFileName(filePath);
+                        //filename-> <vector>userids
+                        Groups[groupId].shareableFiles[fileName].push_back(userId);
 
-                        vector<bool> bitmap;
-                        UsersMap[userId].files[filePath] = bitmap;
+                        struct SharedFile file(filePath);
+                        file.bitmap = {};
+                        UsersMap[userId].files[fileName] = file;
+
                         cout<<"<UPLOADED>\n";
                         send(newSocketFd, "<UPLOADED FILE>", 16, 0);
                     }
@@ -533,8 +561,67 @@ void processClientRequest(struct ThreadParams params){
             }
         }
 
+        //download_file <group_id> <file_name> <destination_path> <user_id>
+        else if(command[0] == "download_file"){
+            if(command.size() != 5){
+                cout<<"<LOGIN TO UPLOAD FILES>\n";
+                send(newSocketFd, "<LOGIN TO UPLOAD FILES>", 24, 0);
+            }
+            else{
+
+                string groupId = command[1];
+                string fileName = command[2];
+                string destinationPath = command[3];
+                string userId = command[4];
+
+                if(Groups.find(groupId) == Groups.end()){
+                    cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
+                    send(newSocketFd, "<GROUP DOESN'T EXIST>", 22, 0);
+                }
+
+                else if(Groups[groupId].shareableFiles.find(fileName) == Groups[groupId].shareableFiles.end()){
+                    cout<<"<ERROR>: FILE DOESN'T EXIST IN THE GROUP\n";
+                    send(newSocketFd, "<FILE DOESN'T EXIST IN THE GROUP>", 52, 0);
+                }
+
+                else if(Groups[groupId].userIds.find(userId) == Groups[groupId].userIds.end()){
+                    cout<<"<ERROR>: USER NOT A MEMBER OF THE GROUP\n";
+                    send(newSocketFd, "<USER NOT A MEMBER OF THE GROUP>", 33, 0);
+                }
+
+                else{
+                    cout<<"<SEND>: META DATA SUCCESFULLY FORWARDED\n";
+                    vector<string> userIds = (Groups[groupId].shareableFiles)[fileName];
+                    string res = "";
+                    for(string uid : userIds){
+                        if(UsersMap[uid].live){
+                            res+=uid;
+                            res+=" ";
+                        }
+                    }
+                    res.pop_back();
+                    send(newSocketFd, res.c_str(), res.size(), 0);
+                }
+
+            }
+        }
+
+        //getuserdetails uid
+        else if(command[0] == "getuserdetails"){
+            string uid = command[1];
+            string res = "";
+            res+=UsersMap[uid].ip;
+            res+=" ";
+            res+=to_string(UsersMap[uid].port);
+            cout<<"<SEND>: USER DATA SUCCESFULLY FORWARDED\n";
+            send(newSocketFd, res.c_str(), res.size(), 0);
+        }
+
         else{
-            cout<<request<<"\n";
+            if(request == "quit"){
+                cout<<"SHUTTING DOWN.. ";
+            }
+            else cout<<"INVALID COMMAND!!\n";
         }
 
         close(newSocketFd);

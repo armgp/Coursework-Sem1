@@ -12,7 +12,8 @@
 #include <jsoncpp/json/json.h>
 #include <fstream>
 #include <sys/stat.h>
-#include <limits.h> /* PATH_MAX */
+#include <limits.h> 
+#include <unordered_map>
 #include "logger.h"
 
 using namespace std;
@@ -35,9 +36,22 @@ public:
 } tracker;
 
 string userid = "";
+unordered_map<string ,vector<pair<bool, int>>> fileMap;
+
 vector<string> createdDirectories;
 
 /* utils */
+string getFileName(string filePath){
+    int n = filePath.size();
+    for(int i=n-1; i>=0; i--){
+        if(filePath[i] == '/'){
+            return filePath.substr(i+1);
+        }
+    }
+
+    return filePath;
+}
+
 vector<string> processCommand(string s){
     int n = s.size();
     int st = 0;
@@ -268,6 +282,8 @@ void client(string req, string ip, int port) {
 
         req+=" ";
         req+=to_string(port);
+        req+=" ";
+        req+=ip;
 
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         cout<<"**********["<<res<<"]**********\n";
@@ -495,13 +511,20 @@ void client(string req, string ip, int port) {
             return;
         }
 
-        char buf[PATH_MAX]; /* PATH_MAX incudes the \0 so +1 is not required */
+        char buf[PATH_MAX]; 
         char *result = realpath(command[1].c_str(), buf);
         if(!result){
             cout<<"**********[<FILE NOT FOUND>]**********\n";
             return;
         }
+        string buffer(buf);
 
+        req="";
+        req+=command[0];
+        req+=" ";
+        req+=buffer;
+        req+=" ";
+        req+=command[2];
         req+=" ";
         req+=userid;
 
@@ -513,6 +536,30 @@ void client(string req, string ip, int port) {
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
+        if(response == "<UPLOADED FILE>"){
+            string fileName = getFileName(buffer);
+
+            FILE * pFile;
+            pFile = fopen (buf , "r");
+
+            int sz=0;
+            if (pFile == NULL) perror ("Error opening file");
+            else{
+                fseek(pFile, 0L, SEEK_END);
+                sz = ftell(pFile);
+            }
+            fclose(pFile);
+            
+            int noOfChunks = sz/512;
+            int bytesLeft = sz - noOfChunks*512;
+            vector<pair<bool,int>> bitmap(noOfChunks, make_pair(1, 512));
+            if(bytesLeft > 0){
+                bitmap.push_back(make_pair(1, bytesLeft));
+            }
+
+            // cout<<"FILE SIZE = "<<sz<<"No of Chunks = "<<noOfChunks<<" No of bytes left = "<<bytesLeft<<"\n";
+            fileMap[fileName] = bitmap;
+        }
     }
 
     //list_files <group_id>
@@ -530,6 +577,54 @@ void client(string req, string ip, int port) {
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
+    }
+
+    //download_file <group_id> <file_name> <destination_path>
+    else if(command[0] == "download_file"){
+        if(command.size() != 4){
+            cout<<"Invalid number of arguments. Try => download_file <group_id> <file_name> <destination_path>\n";
+            return;
+        }
+
+        if(userid.size() == 0){
+            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            return;
+        }
+
+        char buf[PATH_MAX]; 
+        char *result = realpath(command[3].c_str(), buf);
+        if(!result){
+            cout<<"**********[<DESTINATION NOT FOUND>]**********\n";
+            return;
+        }
+
+        req+=" ";
+        req+=userid;
+
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+        char* res = client.request(&client, tracker.ip, tracker.port, req);
+        string response(res);
+        cout<<"**********[<USERS WITH FILE>: "<<response<<"]**********\n";
+
+        //considering response only has one user id
+        string peer1 = response;
+        client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+
+        string getUserDets = "getuserdetails ";
+        getUserDets+=peer1;
+        char* res2 = client.request(&client, tracker.ip, tracker.port, getUserDets);
+        string response2(res2);
+        vector<string> dets = processCommand(response2);
+        int peerPort = stoi(dets[1]);
+        cout<<dets[0]<<" :: "<<peerPort<<"\n";
     }
 
     else{
