@@ -68,6 +68,7 @@ public:
 
 class Group{
 public:
+    string adminUserId;
     set<string> userIds;
     set<string> shareableFiles; //filepaths
     set<string> pendingRequests; //userids
@@ -256,6 +257,7 @@ void processClientRequest(struct ThreadParams params){
                 string userid = command[2];
                 if(Groups.find(groupid) == Groups.end()){
                     Groups[groupid].userIds.insert(userid);
+                    Groups[groupid].adminUserId = userid;
                     send(newSocketFd, "<CREATED GROUP>", 16, 0);
                     cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
                     UsersMap[userid].addToAdminedGroups(groupid);
@@ -355,7 +357,7 @@ void processClientRequest(struct ThreadParams params){
                         send(newSocketFd, "<USER IS NOT A PART OF THIS GROUP>", 35, 0);
                         cout<<"<ERROR> USER: "<<userId<<" - NOT IN THE GROUP\n";
                     }else{
-                        if((UsersMap[userId].adminedGroups).find(groupId) != (UsersMap[userId].adminedGroups).end()){
+                        if(Groups[groupId].adminUserId == userId){
                             send(newSocketFd, "<ADMIN CANNOT LEAVE>", 21, 0);
                             cout<<"<ERROR> ADMIN: "<<userId<<" - CANNOT LEAVE\n";
                         }
@@ -384,7 +386,7 @@ void processClientRequest(struct ThreadParams params){
                     cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
                     send(newSocketFd, "<GROUP DOESN'T EXIST>", 52, 0);
                 }
-                else if((user.adminedGroups).find(groupId) == (user.adminedGroups).end()){
+                else if( Groups[groupId].adminUserId != userId){
                     cout<<"<ERROR>: ONLY ADMIN OF THE GROUP CAN LIST REQUESTS\n";
                     send(newSocketFd, "<ONLY ADMIN OF THIS GROUP CAN SEE PENDING REQUESTS>", 52, 0);
                 }else{
@@ -431,7 +433,7 @@ void processClientRequest(struct ThreadParams params){
 
                 else {
                     User adminUser = UsersMap[admin];
-                    if(adminUser.adminedGroups.find(groupId) == adminUser.adminedGroups.end()){
+                    if(Groups[groupId].adminUserId != userId){
                         cout<<"<ERROR>: "<<admin<<" IS NOT THE ADMIN\n";
                         send(newSocketFd, "<CURRENT SESSION DOESN'T HAVE AUTHORIZATION OVER THIS GROUP>", 61, 0);
                     }else{
