@@ -36,7 +36,8 @@ public:
 } tracker;
 
 string userid = "";
-unordered_map<string ,vector<pair<bool, int>>> fileMap;
+
+unordered_map<string ,vector<pair<bool, int>>> fileMap; //filepath -> bitmap
 
 vector<string> createdDirectories;
 
@@ -280,11 +281,6 @@ void client(string req, string ip, int port) {
             return;
         }
 
-        req+=" ";
-        req+=to_string(port);
-        req+=" ";
-        req+=ip;
-
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         cout<<"**********["<<res<<"]**********\n";
         string response(res);
@@ -301,6 +297,12 @@ void client(string req, string ip, int port) {
             cout<<"Invalid number of arguments. Try => login <user_id> <password>\n";
             return;
         }
+
+        req+=" ";
+        req+=to_string(port);
+        req+=" ";
+        req+=ip;
+
         if(userid.size()==0){
             struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
             if(client.socket == -1){
@@ -558,7 +560,7 @@ void client(string req, string ip, int port) {
             }
 
             // cout<<"FILE SIZE = "<<sz<<"No of Chunks = "<<noOfChunks<<" No of bytes left = "<<bytesLeft<<"\n";
-            fileMap[fileName] = bitmap;
+            fileMap[buffer] = bitmap;
         }
     }
 
