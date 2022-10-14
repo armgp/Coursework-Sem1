@@ -12,6 +12,7 @@
 #include <jsoncpp/json/json.h>
 #include <fstream>
 #include <sys/stat.h>
+#include <limits.h> /* PATH_MAX */
 #include "logger.h"
 
 using namespace std;
@@ -491,6 +492,13 @@ void client(string req, string ip, int port) {
 
         if(userid.size() == 0){
             cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            return;
+        }
+
+        char buf[PATH_MAX]; /* PATH_MAX incudes the \0 so +1 is not required */
+        char *result = realpath(command[1].c_str(), buf);
+        if(!result){
+            cout<<"**********[<FILE NOT FOUND>]**********\n";
             return;
         }
 
