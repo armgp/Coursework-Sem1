@@ -1,6 +1,6 @@
 /* includes */
 #include <iostream>
-#include <pthread.h>
+#include <thread>
 #include <netinet/ip.h>
 #include <arpa/inet.h> 
 #include <stdio.h>
@@ -179,10 +179,9 @@ struct Server serverConstructor(int domain, int type, int protocol, u_long inter
     return server;
 }
 
-void* server(void *arg){
-    int* port = (int *)arg;
-    cout<<"[Peer Server]:    PORT=> "<<*port<<"\n";
-    struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, *port, 20);
+void server(int port){
+    cout<<"[Peer Server]:    PORT=> "<<port<<"\n";
+    struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, port, 20);
     
     struct sockaddr* address = (struct sockaddr*)&server.address;
     socklen_t addressLen = (socklen_t)sizeof(server.address);
@@ -196,7 +195,6 @@ void* server(void *arg){
         printf("%s\n", req);
         close(newSocketFd);
     }
-    return NULL;
 }
 
 
@@ -545,13 +543,7 @@ int main(int n, char* argv[]){
     cout<<"[Tracker Used]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
     cout<<"[Peer Client]:    IP=> "<<ip<<" | PORT=> "<<port<<"\n";
 
-    // Logger::Info("%d", 3);
-    pthread_t serverThread;
-    
-    int* p = &port;
-    if(pthread_create(&serverThread, NULL, server, (void *)p) != 0){
-        cout<<"!! ERROR - CANNOT CREATE SERVER THREAD !!\n";
-    }
+    thread serverThread(server, port);
 
     while(true){
         string req;
@@ -559,9 +551,7 @@ int main(int n, char* argv[]){
         if(req!="") client(req, ip, port);
     }
 
-    if(pthread_join(serverThread, NULL) != 0){
-        cout<<"!! ERROR - PTHREAD_JOIN FAILED !!\n";
-    }
+    serverThread.join();
 
     return 0;
 }
