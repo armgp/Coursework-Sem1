@@ -264,6 +264,10 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
+
+        req+=" ";
+        req+=to_string(port);
+
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         cout<<"**********["<<res<<"]**********\n";
         string response(res);

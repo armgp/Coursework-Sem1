@@ -37,6 +37,8 @@ class User {
 public:
     string uid;
     string password;
+    int port;
+    bool live = false;
     unordered_map<string, int> joinedGroups;
     unordered_map<string, int> adminedGroups;
 
@@ -44,9 +46,10 @@ public:
 
     }
 
-    User(string _uid, string _password){
+    User(string _uid, string _password, string _port){
         uid = _uid;
         password = _password;
+        port = stoi(_port);
     }
 
     int joinGroup(string groupId){
@@ -67,12 +70,11 @@ class Group{
 public:
     set<string> userIds;
     set<string> shareableFiles; //filepaths
+    set<string> pendingRequests; //userids
 };
 
 unordered_map <string, User> UsersMap;
-unordered_map <string, struct sockaddr*> LoggedUsers;
 unordered_map <string, Group> Groups; //groupId, Group
-unordered_map <string, set<string>> GroupsPendingRequestsMap; //groupId, {userids}
 
 /* utils */
 bool doesFileExist(string filePath){
@@ -158,7 +160,6 @@ struct Client {
 struct ThreadParams {
     int newSocketFd;
     struct Server server;
-    sockaddr* address;
     bool* status;
 };
 
@@ -166,7 +167,6 @@ void processClientRequest(struct ThreadParams params){
 
         int newSocketFd = params.newSocketFd;
         struct Server server = params.server;
-        sockaddr* address = params.address;
         bool* status = params.status;
 
         if(!(*status)) return;
@@ -183,19 +183,28 @@ void processClientRequest(struct ThreadParams params){
 
         vector<string> command = processCommand(request);
 
-        // create_user <user_id> <password>
+        // create_user <user_id> <password> <peer_port>
         if(command[0] == "create_user"){
-            string userId = command[1];
-            string password = command[2];
-            if(UsersMap.find(userId) == UsersMap.end()){
-                User user(userId, password);
-                UsersMap[userId] = user;
-                send(newSocketFd, "<CREATED USER>", 15, 0);
-                cout<<"<CREATED> User:"<<userId<<"\n";
+
+            if(command.size() != 4){
+                cout<<"<PORT DETAILS ARE NOT ATTATCHED>\n";
+                send(newSocketFd, "<PORT DETAILS ARE NOT ATTATCHED>", 26, 0);
             }
+
             else{
-                send(newSocketFd, "<CREATE USER FAILED - USERID ALREADY EXISTS>", 45, 0);
-                cout<<"<CREATE USER FAILED>: User-Id already exists!\n";
+                string userId = command[1];
+                string password = command[2];
+                string peerPort = command[3];
+                if(UsersMap.find(userId) == UsersMap.end()){
+                    User user(userId, password, peerPort);
+                    UsersMap[userId] = user;
+                    send(newSocketFd, "<CREATED USER>", 15, 0);
+                    cout<<"<CREATED> User:"<<userId<<"\n";
+                }
+                else{
+                    send(newSocketFd, "<CREATE USER FAILED - USERID ALREADY EXISTS>", 45, 0);
+                    cout<<"<CREATE USER FAILED>: User-Id already exists!\n";
+                }
             }
         }
 
@@ -204,14 +213,14 @@ void processClientRequest(struct ThreadParams params){
             string userId = command[1];
             string password = command[2];
             if(UsersMap.find(userId) != UsersMap.end() && 
-               LoggedUsers.find(userId)==LoggedUsers.end() && 
+               UsersMap[userId].live == false && 
                UsersMap[userId].password == password){
-                LoggedUsers[userId] = address;
+                UsersMap[userId].live = true;
                 cout<<"<LOGGED IN AS>: "<<userId<<"\n";
                 send(newSocketFd, "<LOGGED IN>", 12, 0);
             }
             
-            else if(UsersMap.find(userId) != UsersMap.end() && LoggedUsers.find(userId)!=LoggedUsers.end()){
+            else if(UsersMap.find(userId) != UsersMap.end() && UsersMap[userId].live == true){
                 cout<<"<USER ALREADY LOGGED ON ANOTHER SYSTEM>\n";
                 send(newSocketFd, "<ALREADY LOGGED IN ANOTHER SYSTEM>", 35, 0);
             }
@@ -222,7 +231,7 @@ void processClientRequest(struct ThreadParams params){
             }
         }
         
-        //logout
+        //logout <user_id>
         else if(command[0] == "logout"){
             string userid = command[1];
             if(UsersMap.find(userid) == UsersMap.end()){
@@ -231,7 +240,7 @@ void processClientRequest(struct ThreadParams params){
             }
             
             else{
-                LoggedUsers.erase(userid);
+                UsersMap[userid].live = false;
                 cout<<"<"<<userid<<" LOGGED OUT>\n";
                 send(newSocketFd, "<LOGGED OUT>", 21, 0);
             }
@@ -306,15 +315,15 @@ void processClientRequest(struct ThreadParams params){
                 }
                 
                 else{
-                    auto pos = GroupsPendingRequestsMap[groupId].find(userId);
+                    auto pos = Groups[groupId].pendingRequests.find(userId);
 
-                    if(pos != GroupsPendingRequestsMap[groupId].end()){
+                    if(pos != Groups[groupId].pendingRequests.end()){
                         send(newSocketFd, "<REQUEST ALREADY PENDING>", 26, 0);
                         cout<<"<REQUEST ALREADY PENDING>\n";
                     }
 
                     else {
-                        GroupsPendingRequestsMap[groupId].insert(userId);
+                        Groups[groupId].pendingRequests.insert(userId);
                         send(newSocketFd, "<REQUEST SEND>", 15, 0);
                         cout<<"<REQUEST SENT>\n";
                     }
@@ -379,14 +388,13 @@ void processClientRequest(struct ThreadParams params){
                     cout<<"<ERROR>: ONLY ADMIN OF THE GROUP CAN LIST REQUESTS\n";
                     send(newSocketFd, "<ONLY ADMIN OF THIS GROUP CAN SEE PENDING REQUESTS>", 52, 0);
                 }else{
-                    if(GroupsPendingRequestsMap.find(groupId) == GroupsPendingRequestsMap.end() || 
-                        GroupsPendingRequestsMap[groupId].size() == 0){
+                    if(Groups[groupId].pendingRequests.size() == 0){
                         cout<<"<NO PENDING REQUESTS>\n";
                         send(newSocketFd, "<NONE>", 7, 0);
                     }else{
                         string response = "\n\n";
                         int i = 1;
-                        for(string uid : GroupsPendingRequestsMap[groupId]){
+                        for(string uid : Groups[groupId].pendingRequests){
                             response+=to_string(i++);
                             response+=". ";
                             response+=uid;
@@ -428,11 +436,11 @@ void processClientRequest(struct ThreadParams params){
                         send(newSocketFd, "<CURRENT SESSION DOESN'T HAVE AUTHORIZATION OVER THIS GROUP>", 61, 0);
                     }else{
                        
-                        auto pos = GroupsPendingRequestsMap[groupId].find(userId);
+                        auto pos = Groups[groupId].pendingRequests.find(userId);
                     
-                        if(pos != GroupsPendingRequestsMap[groupId].end()){
+                        if(pos != Groups[groupId].pendingRequests.end()){
                             Groups[groupId].userIds.insert(userId);
-                            GroupsPendingRequestsMap[groupId].erase(pos);
+                            Groups[groupId].pendingRequests.erase(pos);
                             cout<<"<ACCEPTED>: "<<userId<<"\n";
                             send(newSocketFd, "<USER IS ACCEPTED TO THE GROUP>", 32, 0);
                         }
@@ -565,7 +573,6 @@ void server(int port){
         struct ThreadParams params;
         params.newSocketFd = newSocketFd;
         params.server = server;
-        params.address = address;
         params.status = &status;  
 
         thread clientReqHandleThread(processClientRequest, params);
