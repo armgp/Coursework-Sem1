@@ -33,6 +33,16 @@ public:
     }
 } tracker;
 
+struct SharedFile{
+    string filepath;
+    vector<bool> bitmap;
+
+    SharedFile(string path, vector<bool> bm){
+        filepath = path;
+        bitmap = bm;
+    }
+};
+
 class User {
 public:
     string uid;
@@ -41,6 +51,7 @@ public:
     bool live = false;
     unordered_map<string, int> joinedGroups;
     unordered_map<string, int> adminedGroups;
+    unordered_map<string, vector<bool>> files; //filepath -> bitmap
 
     User(){
 
@@ -70,8 +81,8 @@ class Group{
 public:
     string adminUserId;
     set<string> userIds;
-    set<string> shareableFiles; //filepaths
     set<string> pendingRequests; //userids
+    unordered_map<string, vector<string>> shareableFiles; //filepath-> {userids}
 };
 
 unordered_map <string, User> UsersMap;
@@ -483,7 +494,10 @@ void processClientRequest(struct ThreadParams params){
                         cout<<"<ERROR>: USER "<<userId<<" IS NOT A PART OF THE GROUP "<<groupId<<"\n";
                         send(newSocketFd, "<USER NOT PART OF THE GROUP>", 29, 0);
                     }else{
-                        Groups[groupId].shareableFiles.insert(filePath);
+                        Groups[groupId].shareableFiles[filePath].push_back(userId);
+
+                        vector<bool> bitmap;
+                        UsersMap[userId].files[filePath] = bitmap;
                         cout<<"<UPLOADED>\n";
                         send(newSocketFd, "<UPLOADED FILE>", 16, 0);
                     }
@@ -507,10 +521,10 @@ void processClientRequest(struct ThreadParams params){
                 else{
                     string response = "\n\n";
                     int i = 1;
-                    for(string file : Groups[groupId].shareableFiles){
+                    for(auto file : Groups[groupId].shareableFiles){
                         response+=to_string(i++);
                         response+=". ";
-                        response+=file;
+                        response+=file.first;
                         response+="\n";
                     }
                     response+="\n";
