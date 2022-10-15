@@ -324,6 +324,56 @@ struct Client clientConstructor(int domain, int type, int protocol, int port, u_
     return client;
 }
 
+void peerThreadCode(string peer1, string fileName, int port){
+
+            struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            if(client2.socket == -1){
+                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+    
+            //space important after "getuserdetails "
+            string getUserDets = "getuserdetails ";
+            getUserDets+=peer1;
+            char* res2 = client2.request(&client2, tracker.ip, tracker.port, getUserDets);
+            string response2(res2);
+            vector<string> dets = processCommand(response2);
+            string peerIp = dets[0];
+            int peerPort = stoi(dets[1]);
+            // cout<<dets[0]<<" :: "<<peerPort<<"\n";
+
+            struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+            if(client3.socket == -1){
+                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+
+            string getFileBitMapReq = "getbitmap ";
+            
+            getFileBitMapReq+=fileName;
+            char* res3 = client3.request(&client3, peerIp, peerPort, getFileBitMapReq);
+            string stringBitMap(res3);
+            vector<pair<bool, int>> bitMap = convertStringToBitMap(stringBitMap);
+            // cout<<"<BITMAP RECEIVED>\n";
+            // for(pair<bool, int> p : bitMap){
+            //     cout<<p.first<<" "<<p.second<<" ";
+            // }
+            // cout<<"\n";
+
+            // memset(res, 0, 20000);
+            // memset(res2, 0, 20000);
+            // memset(res3, 0, 20000);
+            // client = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+            // if(client.socket == -1){
+            //     cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            //     return;
+            // }
+
+            // string downloadFileReq = "download ";
+            // downloadFileReq+=fileName;
+            // char* res4 = client.request(&client, peerIp, peerPort, downloadFileReq);
+}
+
 void client(string req, string ip, int port) {
 
     vector<string> command = processCommand(req);
@@ -674,7 +724,7 @@ void client(string req, string ip, int port) {
 
         char* res = client.request(&client, tracker.ip, tracker.port, req);
         string response(res);
-        int sz = response.size();
+        memset(res, 0, 20000);
 
         if(response == "<ERROR1>"){
             cout<<"**********[<GROUP DOESN'T EXIST>]**********\n";
@@ -689,53 +739,10 @@ void client(string req, string ip, int port) {
             //
             //considering response only has one user id
             //
-            string peer1 = response;
-            struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-            if(client2.socket == -1){
-                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-                return;
-            }
-    
-            //space important after "getuserdetails "
-            string getUserDets = "getuserdetails ";
-            getUserDets+=peer1;
-            char* res2 = client2.request(&client2, tracker.ip, tracker.port, getUserDets);
-            string response2(res2);
-            vector<string> dets = processCommand(response2);
-            string peerIp = dets[0];
-            int peerPort = stoi(dets[1]);
-            cout<<dets[0]<<" :: "<<peerPort<<"\n";
 
-            struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
-            if(client3.socket == -1){
-                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-                return;
-            }
-
-            string getFileBitMapReq = "getbitmap ";
-            string fileName = command[2];
-            getFileBitMapReq+=fileName;
-            char* res3 = client.request(&client3, peerIp, peerPort, getFileBitMapReq);
-            string stringBitMap(res3);
-            vector<pair<bool, int>> bitMap = convertStringToBitMap(stringBitMap);
-            cout<<"<BITMAP RECEIVED>\n";
-            for(pair<bool, int> p : bitMap){
-                cout<<p.first<<" "<<p.second<<" ";
-            }
-            cout<<"\n";
-
-            memset(res, 0, 20000);
-            memset(res2, 0, 20000);
-            memset(res3, 0, 20000);
-            // client = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
-            // if(client.socket == -1){
-            //     cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-            //     return;
-            // }
-
-            // string downloadFileReq = "download ";
-            // downloadFileReq+=fileName;
-            // char* res4 = client.request(&client, peerIp, peerPort, downloadFileReq);
+            thread peerThread(peerThreadCode, response, command[2], port);
+            peerThread.join();
+            
         }
     }
 
