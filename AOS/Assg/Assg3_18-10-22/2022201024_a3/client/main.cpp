@@ -322,10 +322,10 @@ struct Client {
     int port;
     u_long interface;
 
-    char* (*request)(struct Client *client, string serverIp, int port, string req, int resSize);
+    char* (*request)(struct Client *client, string serverIp, int port, string req, int resSize, int flag);
 };
 
-char* request(struct Client *client, string serverIp, int port, string req, int resSize){
+char* request(struct Client *client, string serverIp, int port, string req, int resSize, int flag){
 
         char* res = (char*)malloc(resSize);
 
@@ -345,12 +345,28 @@ char* request(struct Client *client, string serverIp, int port, string req, int 
             return res;
         }
 
-        if(read(client->socket, res, resSize) == -1){
-            cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
+        if(flag == 0){
+            if(read(client->socket, res, resSize) == -1){
+                cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
+                return res;
+            }
+
             return res;
         }
 
-        return res;
+        //flag == 1 (compulsorily return resSize buffer)
+        int totalSize = 0;
+        char* res2 = (char*)malloc(resSize);
+        int ind = 0;
+        while(totalSize != resSize){
+            int currReadSize = read(client->socket, res, resSize);
+            totalSize+=currReadSize;
+            for(int i=0; (ind<ind+currReadSize && i<currReadSize); i++,ind++){
+                res2[ind] = res[i];
+            }
+            memset(res, 0, resSize);
+        }
+        return res2;
 }
 
 struct Client clientConstructor(int domain, int type, int protocol, int port, u_long interface){
@@ -375,7 +391,7 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
             //space important after "getuserdetails "
             string getUserDets = "getuserdetails ";
             getUserDets+=peer1;
-            char* res1 = client1.request(&client1, tracker.ip, tracker.port, getUserDets, 20000);
+            char* res1 = client1.request(&client1, tracker.ip, tracker.port, getUserDets, 20000, 0);
             string response1(res1);
             vector<string> dets = processCommand(response1);
             string peerIp = dets[0];
@@ -390,17 +406,18 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
             string getFileBitMapReq = "getbitmap ";
             
             getFileBitMapReq+=fileName;
-            char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000);
+            char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000, 0);
             string stringBitMap(res2);
             vector<pair<bool, int>> bitMap = convertStringToBitMap(stringBitMap);
             cout<<"<BITMAP RECEIVED>\n";
        
 
             int noOfChunks = bitMap.size();
-            int sizeOfFile = (noOfChunks-1)*(524288) + (bitMap[noOfChunks-1].second);
-            int efInd = 0;
-            char entireFile[sizeOfFile+1];
-            entireFile[sizeOfFile] = '\0';
+            destinationPath+=fileName;
+            // FILE *downloadedFile = fopen(destinationPath.c_str(), "w");
+            ofstream downloadedFile;
+            downloadedFile.open(destinationPath, ofstream::binary|std::ofstream::app);
+
             for(int i=0; i<noOfChunks; i++){
                 string downloadFileReq = "download ";
                 downloadFileReq+=fileName;
@@ -412,26 +429,23 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
                     return;
                 }
 
-                char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, bitMap[0].second);
+                char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, bitMap[i].second, 1);
                 string response3(res3);
                 cout<<res3<<"\n";
                 if(response3 == "<CHUNK DOWNLOAD FAILED>"){
                     cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<i<<"\n";
                     return;
                 }
-                for(int i=0; i<bitMap[0].second; i++){
-                    entireFile[efInd++] = res3[i];
-                }
-            }
 
-            destinationPath+=fileName;
-            FILE *downloadedFile = fopen(destinationPath.c_str(), "w");
-            int results = fputs(entireFile, downloadedFile);
-            if (results == EOF) {
-                cout<<"<FAILED TO DOWNLOAD>\n";
-                return;
+                int chunkSize = 524288;
+                long offset = i*chunkSize;
+                // downloadedFile.seekp(offset, downloadedFile.beg);
+                downloadedFile.write(res3, bitMap[i].second);
+                
             }
-            fclose(downloadedFile);
+        
+            downloadedFile.close();
+
             cout<<"<DOWNLOAD SUCCESSFULL>\n";
 }
 
@@ -451,7 +465,7 @@ void client(string req, string ip, int port) {
             return;
         }
 
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         cout<<"**********["<<res<<"]**********\n";
         string response(res);
         if(response == "<CREATED USER>"){
@@ -479,7 +493,7 @@ void client(string req, string ip, int port) {
                 cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
                 return;
             }
-            char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+            char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
             cout<<"**********["<<res<<"]**********\n";
             string response(res);
             if(response=="<LOGGED IN>") {
@@ -509,7 +523,7 @@ void client(string req, string ip, int port) {
             }
             req+=" ";
             req+=userid;
-            char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+            char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
             
             string response(res);
             if(response == "<LOGGED OUT>"){
@@ -540,7 +554,7 @@ void client(string req, string ip, int port) {
         }
 
         
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         if(response == "<CREATED GROUP>"){
             cout<<"**********[<GROUP "<<command[1]<<" CREATED>]**********\n";
@@ -562,7 +576,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
 
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
@@ -589,7 +603,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
     }
@@ -614,7 +628,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
 
@@ -640,7 +654,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
 
@@ -666,7 +680,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
     }
@@ -705,7 +719,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
         if(response == "<UPLOADED FILE>"){
@@ -748,7 +762,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         cout<<"**********["<<response<<"]**********\n";
     }
@@ -784,7 +798,7 @@ void client(string req, string ip, int port) {
         }
 
 
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000);
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         memset(res, 0, 20000);
 
@@ -814,7 +828,7 @@ void client(string req, string ip, int port) {
             cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
-        client.request(&client, ip, client.port, req, 20000);
+        client.request(&client, ip, client.port, req, 20000, 0);
     }
 
 }
@@ -843,5 +857,4 @@ int main(int n, char* argv[]){
 
     return 0;
 }
-
 

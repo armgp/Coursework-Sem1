@@ -669,7 +669,7 @@ struct Server serverConstructor(int domain, int type, int protocol, u_long inter
     return server;
 }
 
-void server(int port){
+void server(int port, string ip){
     cout<<"[Tracker Server]:    PORT=> "<<port<<"\n";
     struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, port, 20);
 
@@ -757,7 +757,7 @@ int main(int n, char* argv[]){
     cout<<"[Tracker Client]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
 
     // Logger::Info("%d", 3);
-    thread serverThread(server, tracker.port);
+    thread serverThread(server, tracker.port, tracker.ip);
 
     while(true){
         string req;
@@ -772,3 +772,31 @@ int main(int n, char* argv[]){
 
     return 0;
 }
+
+
+//  string fileName = commands[1];
+//     int positionOfChunk = stoi(commands[2]);
+//     string fileLoc = fileLocMap[fileName];
+//     int chunkSize = fileMap[fileName][positionOfChunk].second;
+//     FILE * pFile;
+//     char buffer[chunkSize];
+//     bzero(buffer, chunkSize);
+//     pFile = fopen (fileLoc.c_str() , "r");
+//     if (pFile == NULL) perror ("Error opening file");
+//     else{
+//         long offset = positionOfChunk*chunkSize;
+//         fseek(pFile, offset, SEEK_SET);
+//         //write(int fd, const void *buf, size_t count);
+        
+//         if ( fread (buffer , 1, chunkSize, pFile) != chunkSize ) {
+//             cout<<"ERROR WHILE SENDING CHUNK NO: "<<positionOfChunk<<"\n";
+//             // fseek(pFile, offset, SEEK_SET);
+//             send(newSocketFd, "<CHUNK DOWNLOAD FAILED>", 24, 0);
+//         }
+        
+//         write(newSocketFd, buffer, chunkSize);
+//         cout<<buffer<<"\n";
+//         cout<<"<CHUNK "<<positionOfChunk<<" SEND with BufferSIze: "<<chunkSize<<">\n";
+        
+//         fclose (pFile);
+// }
