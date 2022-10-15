@@ -38,67 +38,12 @@ public:
 
 string userid = "";
 
-unordered_map<string, vector<pair<bool, int>>> fileMap; //fileName -> bitmap
+unordered_map<string, pair<vector<bool>, int>> fileToBitMap;
 unordered_map<string, string> fileLocMap; // fileName -> filePath
 
 vector<string> createdDirectories;
 
 /* utils */
-string convertBitMapToString(vector<pair<bool, int>> bitMap){
-    string res="";
-    for(pair<bool, int> p : bitMap){
-        int status = p.first;
-        res+=to_string(status);
-        res+=" ";
-        res+=to_string(p.second);
-        res+=" ";
-    }
-    res.pop_back();
-    return res;
-}
-
-vector<pair<bool, int>> convertStringToBitMap(string str){
-    vector<pair<bool, int>> res;
-    vector<bool> boolArr;
-    vector<int> intArr;
-    int n = str.size();
-    int st = 0;
-    int iorb = true;
-    for(int i=0; i<=n; i++){
-        if(i==n || str[i]== ' '){
-            string bi = str.substr(st, i-st);
-            int val = stoi(bi);
-            st = i+1;
-            if(iorb){
-                boolArr.push_back(val);
-                iorb = !iorb;
-            }else{
-                intArr.push_back(val);
-                iorb = !iorb;
-            }
-        }
-    }
-
-    int m = boolArr.size();
-    for(int i=0; i<m; i++){
-        res.push_back(make_pair(boolArr[i], intArr[i]));
-    }
-
-    return res;
-
-}
-
-string getFileName(string filePath){
-    int n = filePath.size();
-    for(int i=n-1; i>=0; i--){
-        if(filePath[i] == '/'){
-            return filePath.substr(i+1);
-        }
-    }
-
-    return filePath;
-}
-
 vector<string> processCommand(string s){
     int n = s.size();
     int st = 0;
@@ -111,6 +56,48 @@ vector<string> processCommand(string s){
     }
     res.push_back(s.substr(st));
     return res;
+}
+
+string convertBitMapToString(pair<vector<bool>, int> bitMap){
+    vector<bool> bits = bitMap.first;
+    int lastChunkSize = bitMap.second;
+    string res="";
+    for(bool b : bits){
+        if(b){
+            res+="1";
+        }else{
+            res+="0";
+        }
+    }
+    res+=" ";
+    res+=to_string(lastChunkSize);
+    return res;
+}
+
+pair<vector<bool>, int> convertStringToBitMap(string str){
+    vector<bool> v;
+    int lastChunkSize;
+    vector<string> infos = processCommand(str);
+    lastChunkSize = atoi(infos[1].c_str());
+    for(char c : infos[0]){
+        if(c == '1'){
+            v.push_back(true);
+        }else if(c == '0'){
+            v.push_back(false);
+        }
+    }
+    return make_pair(v, lastChunkSize);
+}
+
+string getFileName(string filePath){
+    int n = filePath.size();
+    for(int i=n-1; i>=0; i--){
+        if(filePath[i] == '/'){
+            return filePath.substr(i+1);
+        }
+    }
+
+    return filePath;
 }
 
 void getArgDetails(string& ip, int& port, string& trackerInfoDest, char* arg[]){
@@ -258,8 +245,9 @@ void server(int port){
         if(commands[0] == "getbitmap"){
             string fileName = commands[1];
             string filePath = fileLocMap[fileName];
-            vector<pair<bool, int>> bitmap = fileMap[fileName];
-            string stringBitmap = convertBitMapToString(bitmap);
+
+            pair<vector<bool>, int> bitMap = fileToBitMap[fileName];
+            string stringBitmap = convertBitMapToString(bitMap);
 
             cout<<"<BITMAP SEND>\n";
             cout<<stringBitmap<<"\n\n";
@@ -270,37 +258,20 @@ void server(int port){
             string fileName = commands[1];
             int positionOfChunk = stoi(commands[2]);
             string fileLoc = fileLocMap[fileName];
-            int chunkSize = fileMap[fileName][positionOfChunk].second;
-            
-            // FILE * pFile;
-            // char buffer [chunkSize+1];
-            // pFile = fopen (fileLoc.c_str() , "r");
-            // if (pFile == NULL) perror ("Error opening file");
-            // else{
-            //     long offset = positionOfChunk*524288;
-            //     fseek(pFile, offset, SEEK_SET);
-            //     //write(int fd, const void *buf, size_t count);
-                
-            //     if ( fgets (buffer , chunkSize+1, pFile) == NULL ) {
-            //         cout<<"ERROR WHILE SENDING CHUNK NO: "<<positionOfChunk<<"\n";
-            //         send(newSocketFd, "<CHUNK DOWNLOAD FAILED>", 24, 0);
-            //     }
-                 
-            //     else{
-            //         cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
-            //         send(newSocketFd, buffer, chunkSize+1, 0);
-            //     }
-
-            //     fclose (pFile);
-            // }
+            int totalNoOfChunks = fileToBitMap[fileName].first.size();
+            int chunkSize = 524288;
+            if(positionOfChunk == totalNoOfChunks-1){
+                chunkSize = fileToBitMap[fileName].second;
+            }
 
             ifstream file;
             file.open(fileLoc, ios::binary);
             long offset = positionOfChunk*524288;
             file.seekg(offset, file.beg);
-            char buffer [chunkSize];
+            char buffer[chunkSize];
             file.read(buffer, chunkSize);
             file.close();
+
             send(newSocketFd, buffer, chunkSize, 0);
             cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
         }
@@ -408,17 +379,22 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
             getFileBitMapReq+=fileName;
             char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000, 0);
             string stringBitMap(res2);
-            vector<pair<bool, int>> bitMap = convertStringToBitMap(stringBitMap);
+            pair<vector<bool>, int> bitMapInfo = convertStringToBitMap(stringBitMap);
             cout<<"<BITMAP RECEIVED>\n";
        
-
+            vector<bool> bitMap = bitMapInfo.first;
+            int lastChunkSize = bitMapInfo.second;
+            int chunkSize = 1024*512;
             int noOfChunks = bitMap.size();
             destinationPath+=fileName;
-            // FILE *downloadedFile = fopen(destinationPath.c_str(), "w");
             ofstream downloadedFile;
             downloadedFile.open(destinationPath, ofstream::binary|std::ofstream::app);
 
             for(int i=0; i<noOfChunks; i++){
+                int currChunkSize = chunkSize;
+                if(i == noOfChunks-1){
+                    currChunkSize = lastChunkSize;
+                }
                 string downloadFileReq = "download ";
                 downloadFileReq+=fileName;
                 downloadFileReq+=" ";
@@ -429,19 +405,14 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
                     return;
                 }
 
-                char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, bitMap[i].second, 1);
+                char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
                 string response3(res3);
                 cout<<res3<<"\n";
                 if(response3 == "<CHUNK DOWNLOAD FAILED>"){
                     cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<i<<"\n";
                     return;
                 }
-
-                int chunkSize = 524288;
-                long offset = i*chunkSize;
-                // downloadedFile.seekp(offset, downloadedFile.beg);
-                downloadedFile.write(res3, bitMap[i].second);
-                
+                downloadedFile.write(res3, currChunkSize);
             }
         
             downloadedFile.close();
@@ -739,13 +710,21 @@ void client(string req, string ip, int port) {
             int chunkSize = 512*1024;
             int noOfChunks = sz/chunkSize;
             int bytesLeft = sz - noOfChunks*chunkSize;
-            vector<pair<bool,int>> bitmap(noOfChunks, make_pair(1, chunkSize));
+            // vector<pair<bool,int>> bitmap(noOfChunks, make_pair(1, chunkSize));
+            
+            int lastChunkSize;
             if(bytesLeft > 0){
-                bitmap.push_back(make_pair(1, bytesLeft));
+                lastChunkSize = bytesLeft;
+                noOfChunks++;
             }
+            vector<bool> bitMap(noOfChunks, true);
+            fileToBitMap[fileName] = make_pair(bitMap, lastChunkSize);
 
-            // cout<<"FILE SIZE = "<<sz<<"No of Chunks = "<<noOfChunks<<" No of bytes left = "<<bytesLeft<<"\n";
-            fileMap[fileName] = bitmap;
+            // if(bytesLeft > 0){
+            //     bitmap.push_back(make_pair(1, bytesLeft));
+            // }
+            
+            // fileMap[fileName] = bitmap;
             fileLocMap[fileName] = buffer;
         }
     }
