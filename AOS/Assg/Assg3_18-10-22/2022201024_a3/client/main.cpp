@@ -272,28 +272,37 @@ void server(int port){
             string fileLoc = fileLocMap[fileName];
             int chunkSize = fileMap[fileName][positionOfChunk].second;
             
-            FILE * pFile;
-            char buffer [chunkSize+1];
-            pFile = fopen (fileLoc.c_str() , "r");
-            if (pFile == NULL) perror ("Error opening file");
-            else{
-                long offset = positionOfChunk*524288;
-                fseek(pFile, offset, SEEK_SET);
-                //write(int fd, const void *buf, size_t count);
+            // FILE * pFile;
+            // char buffer [chunkSize+1];
+            // pFile = fopen (fileLoc.c_str() , "r");
+            // if (pFile == NULL) perror ("Error opening file");
+            // else{
+            //     long offset = positionOfChunk*524288;
+            //     fseek(pFile, offset, SEEK_SET);
+            //     //write(int fd, const void *buf, size_t count);
                 
-                if ( fgets (buffer , chunkSize+1, pFile) == NULL ) {
-                    cout<<"ERROR WHILE SENDING CHUNK NO: "<<positionOfChunk<<"\n";
-                    send(newSocketFd, "<CHUNK DOWNLOAD FAILED>", 24, 0);
-                }
+            //     if ( fgets (buffer , chunkSize+1, pFile) == NULL ) {
+            //         cout<<"ERROR WHILE SENDING CHUNK NO: "<<positionOfChunk<<"\n";
+            //         send(newSocketFd, "<CHUNK DOWNLOAD FAILED>", 24, 0);
+            //     }
                  
-                else{
-                    cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
-                    send(newSocketFd, buffer, chunkSize+1, 0);
-                }
+            //     else{
+            //         cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
+            //         send(newSocketFd, buffer, chunkSize+1, 0);
+            //     }
 
-                fclose (pFile);
-            }
+            //     fclose (pFile);
+            // }
 
+            ifstream file;
+            file.open(fileLoc, ios::binary);
+            long offset = positionOfChunk*524288;
+            file.seekg(offset, file.beg);
+            char buffer [chunkSize];
+            file.read(buffer, chunkSize);
+            file.close();
+            send(newSocketFd, buffer, chunkSize, 0);
+            cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
         }
 
         else{
@@ -403,7 +412,7 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
                     return;
                 }
 
-                char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, 524289);
+                char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, bitMap[0].second);
                 string response3(res3);
                 cout<<res3<<"\n";
                 if(response3 == "<CHUNK DOWNLOAD FAILED>"){
