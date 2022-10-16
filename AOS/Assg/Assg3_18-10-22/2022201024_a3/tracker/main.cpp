@@ -33,19 +33,6 @@ public:
     }
 } tracker;
 
-struct SharedFile{
-    string filepath;
-    vector<bool> bitmap;
-
-    SharedFile(){
-
-    }
-
-    SharedFile(string path){
-        filepath = path;
-    }
-};
-
 class User {
 public:
     string uid;
@@ -55,7 +42,7 @@ public:
     bool live = false;
     unordered_map<string, int> joinedGroups;
     unordered_map<string, int> adminedGroups;
-    unordered_map<string, struct SharedFile> files; //filename -> SharedFile
+    set<string> files; //filename -> SharedFile
 
     User(){
 
@@ -88,6 +75,7 @@ public:
     unordered_map<string, vector<string>> shareableFiles; //filename-> <vector>userids
 };
 
+unordered_map<string, string> sharedFileDets;
 unordered_map <string, User> UsersMap;
 unordered_map <string, Group> Groups; //groupId, Group
 
@@ -521,10 +509,7 @@ void processClientRequest(struct ThreadParams params){
                         string fileName = getFileName(filePath);
                         //filename-> <vector>userids
                         Groups[groupId].shareableFiles[fileName].push_back(userId);
-
-                        struct SharedFile file(filePath);
-                        file.bitmap = {};
-                        UsersMap[userId].files[fileName] = file;
+                        UsersMap[userId].files.insert(fileName);
 
                         cout<<"<UPLOADED>\n";
                         send(newSocketFd, "<UPLOADED FILE>", 16, 0);
@@ -593,8 +578,13 @@ void processClientRequest(struct ThreadParams params){
                     vector<string> userIds = (Groups[groupId].shareableFiles)[fileName];
                     string res = "";
                     for(string uid : userIds){
+                        //uid-ip-port-
                         if(UsersMap[uid].live){
                             res+=uid;
+                            res+="-";
+                            res+=UsersMap[uid].ip;
+                            res+="-";
+                            res+=to_string(UsersMap[uid].port);
                             res+=" ";
                         }
                     }

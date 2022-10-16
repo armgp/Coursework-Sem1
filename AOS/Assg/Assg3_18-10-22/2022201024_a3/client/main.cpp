@@ -176,9 +176,9 @@ void deleteAllDirs(){
         stat+=rmdir(path.c_str());
     }
     if(stat<0){
-        cout<<"**********[<ERROR WHILE CREATING CLIENT DIRECTORY>]**********\n";
+        std::cout<<"**********[<ERROR WHILE CREATING CLIENT DIRECTORY>]**********\n";
     }else{
-        cout<<"**********[<SUCCESSFULLY CLEANED CLIENT DIRECTORY>]**********\n";
+        std::cout<<"**********[<SUCCESSFULLY CLEANED CLIENT DIRECTORY>]**********\n";
     }
 }
 
@@ -229,7 +229,7 @@ struct Server serverConstructor(int domain, int type, int protocol, u_long inter
 }
 
 void server(int port){
-    cout<<"[Peer Server]:    PORT=> "<<port<<"\n";
+    std::cout<<"[Peer Server]:    PORT=> "<<port<<"\n";
     struct Server server = serverConstructor(AF_INET, SOCK_STREAM, 0, INADDR_ANY, port, 20);
     
     struct sockaddr* address = (struct sockaddr*)&server.address;
@@ -237,7 +237,7 @@ void server(int port){
     while(true){
         int newSocketFd = accept(server.socket, address, &addressLen);
         char req[1000];
-        memset(req, 0, 1000);
+        std::memset(req, 0, 1000);
         read(newSocketFd, req, 1000);
         string request(req);
 
@@ -249,8 +249,8 @@ void server(int port){
             pair<vector<bool>, int> bitMap = fileToBitMap[fileName];
             string stringBitmap = convertBitMapToString(bitMap);
 
-            cout<<"<BITMAP SEND>\n";
-            cout<<stringBitmap<<"\n\n";
+            std::cout<<"<BITMAP SEND>\n";
+            std::cout<<stringBitmap<<"\n\n";
             send(newSocketFd, stringBitmap.c_str(), stringBitmap.size(), 0);
         }
 
@@ -273,7 +273,7 @@ void server(int port){
             file.close();
 
             send(newSocketFd, buffer, chunkSize, 0);
-            cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
+            std::cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
         }
 
         else{
@@ -307,18 +307,18 @@ char* request(struct Client *client, string serverIp, int port, string req, int 
 
         inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
         if(connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1){
-            cout<<"!! ERROR - CANNOT CONNECT SOCKET TO HOST !!\n";
+            std::cout<<"!! ERROR - CANNOT CONNECT SOCKET TO HOST !!\n";
             return res;
         }
 
         if(send(client->socket, req.c_str(), req.size(), 0) == -1){
-            cout<<"!! ERROR - SENDING FROM REQ BUFFER TO CLIENT SOCKET FAILED !!\n";
+            std::cout<<"!! ERROR - SENDING FROM REQ BUFFER TO CLIENT SOCKET FAILED !!\n";
             return res;
         }
 
         if(flag == 0){
             if(read(client->socket, res, resSize) == -1){
-                cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
+                std::cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
                 return res;
             }
 
@@ -335,7 +335,7 @@ char* request(struct Client *client, string serverIp, int port, string req, int 
             for(int i=0; (ind<ind+currReadSize && i<currReadSize); i++,ind++){
                 res2[ind] = res[i];
             }
-            memset(res, 0, resSize);
+            std::memset(res, 0, resSize);
         }
         return res2;
 }
@@ -351,26 +351,11 @@ struct Client clientConstructor(int domain, int type, int protocol, int port, u_
     return client;
 }
 
-void peerThreadCode(string peer1, string fileName, int port, string destinationPath){
-
-            struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-            if(client1.socket == -1){
-                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-                return;
-            }
-    
-            //space important after "getuserdetails "
-            string getUserDets = "getuserdetails ";
-            getUserDets+=peer1;
-            char* res1 = client1.request(&client1, tracker.ip, tracker.port, getUserDets, 20000, 0);
-            string response1(res1);
-            vector<string> dets = processCommand(response1);
-            string peerIp = dets[0];
-            int peerPort = stoi(dets[1]);
+void peerThreadCodeForOnePeer(string peer1, string fileName, int port, string destinationPath, string peerIp, int peerPort){
 
             struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
             if(client2.socket == -1){
-                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
                 return;
             }
 
@@ -380,12 +365,13 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
             char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000, 0);
             string stringBitMap(res2);
             pair<vector<bool>, int> bitMapInfo = convertStringToBitMap(stringBitMap);
-            cout<<"<BITMAP RECEIVED>\n";
+            std::cout<<"<BITMAP RECEIVED>\n";
        
             vector<bool> bitMap = bitMapInfo.first;
             int lastChunkSize = bitMapInfo.second;
             int chunkSize = 1024*512;
             int noOfChunks = bitMap.size();
+            destinationPath+="/";
             destinationPath+=fileName;
             ofstream downloadedFile;
             downloadedFile.open(destinationPath, ofstream::binary|std::ofstream::app);
@@ -401,15 +387,15 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
                 downloadFileReq+=to_string(i);
                 struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
                 if(client2.socket == -1){
-                    cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                    std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
                     return;
                 }
 
                 char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
                 string response3(res3);
-                cout<<res3<<"\n";
+                
                 if(response3 == "<CHUNK DOWNLOAD FAILED>"){
-                    cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<i<<"\n";
+                    std::cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<i<<"\n";
                     return;
                 }
                 downloadedFile.write(res3, currChunkSize);
@@ -417,8 +403,81 @@ void peerThreadCode(string peer1, string fileName, int port, string destinationP
         
             downloadedFile.close();
 
-            cout<<"<DOWNLOAD SUCCESSFULL>\n";
+            std::cout<<"<DOWNLOAD SUCCESSFULL>\n";
 }
+
+void downloadChunkFromPeer(string peer, string fileName, int port, string destinationPath, int chunkNo){
+    struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            if(client1.socket == -1){
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+    
+            //space important after "getuserdetails "
+            string getUserDets = "getuserdetails ";
+            getUserDets+=peer;
+            char* res1 = client1.request(&client1, tracker.ip, tracker.port, getUserDets, 20000, 0);
+            string response1(res1);
+            vector<string> dets = processCommand(response1);
+            string peerIp = dets[0];
+            int peerPort = stoi(dets[1]);
+
+            struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+            if(client2.socket == -1){
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+
+            string getFileBitMapReq = "getbitmap ";
+            
+            getFileBitMapReq+=fileName;
+            char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000, 0);
+            string stringBitMap(res2);
+            pair<vector<bool>, int> bitMapInfo = convertStringToBitMap(stringBitMap);
+            std::cout<<"<BITMAP RECEIVED>\n";
+       
+            vector<bool> bitMap = bitMapInfo.first;
+            int lastChunkSize = bitMapInfo.second;
+            int chunkSize = 1024*512;
+            int noOfChunks = bitMap.size();
+            destinationPath+="/";
+            destinationPath+=fileName;
+            ofstream downloadedFile;
+            downloadedFile.open(destinationPath, ofstream::binary|std::ofstream::app);
+
+           
+            int currChunkSize = chunkSize;
+            if(chunkNo == noOfChunks-1){
+                currChunkSize = lastChunkSize;
+            }
+
+            string downloadFileReq = "download ";
+            downloadFileReq+=fileName;
+            downloadFileReq+=" ";
+            downloadFileReq+=to_string(chunkNo);
+            struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+            if(client2.socket == -1){
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+
+            char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
+            string response3(res3);
+            
+            if(response3 == "<CHUNK DOWNLOAD FAILED>"){
+                std::cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<chunkNo<<"\n";
+                return;
+            }
+
+            downloadedFile.write(res3, currChunkSize);
+            
+        
+            downloadedFile.close();
+
+            std::cout<<"<DOWNLOADED CHUNK>: "<<chunkNo<<"\n";
+}
+
+
 
 void client(string req, string ip, int port) {
 
@@ -427,21 +486,21 @@ void client(string req, string ip, int port) {
     // create_user <user_id> <password>
     if(command[0] == "create_user"){
         if(command.size() != 3){
-            cout<<"Invalid number of arguments. Try => create_user <user_id> <password>\n";
+            std::cout<<"Invalid number of arguments. Try => create_user <user_id> <password>\n";
             return;
         }
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
 
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
-        cout<<"**********["<<res<<"]**********\n";
+        std::cout<<"**********["<<res<<"]**********\n";
         string response(res);
         if(response == "<CREATED USER>"){
             if(createUserDirectory(command[1]) == 1){
-                cout<<"**********[<ERROR WHILE CREATING CLIENT DIRECTORY>]**********\n";
+                std::cout<<"**********[<ERROR WHILE CREATING CLIENT DIRECTORY>]**********\n";
             }
         }
     }
@@ -449,7 +508,7 @@ void client(string req, string ip, int port) {
     // login <user_id> <password>
     else if(command[0] == "login"){
         if(command.size() != 3){
-            cout<<"Invalid number of arguments. Try => login <user_id> <password>\n";
+            std::cout<<"Invalid number of arguments. Try => login <user_id> <password>\n";
             return;
         }
 
@@ -461,17 +520,17 @@ void client(string req, string ip, int port) {
         if(userid.size()==0){
             struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
             if(client.socket == -1){
-                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
                 return;
             }
             char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
-            cout<<"**********["<<res<<"]**********\n";
+            std::cout<<"**********["<<res<<"]**********\n";
             string response(res);
             if(response=="<LOGGED IN>") {
                 userid = command[1];
             }
         }else{
-            cout<<"**********[<ALREADY LOGGED IN AS>: "<<userid<<"]**********\n";
+            std::cout<<"**********[<ALREADY LOGGED IN AS>: "<<userid<<"]**********\n";
         }
     }
     
@@ -479,17 +538,17 @@ void client(string req, string ip, int port) {
     else if(command[0] == "logout"){
 
         if(command.size() != 1){
-            cout<<"Invalid number of arguments. Try => logout\n";
+            std::cout<<"Invalid number of arguments. Try => logout\n";
             return;
         }
 
         if(userid.size() == 0){
-            cout<<"**********[<NO USER FOUND>]**********\n";
+            std::cout<<"**********[<NO USER FOUND>]**********\n";
         }else{
             string ui = userid;
             struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
             if(client.socket == -1){
-                cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
                 return;
             }
             req+=" ";
@@ -499,9 +558,9 @@ void client(string req, string ip, int port) {
             string response(res);
             if(response == "<LOGGED OUT>"){
                 userid = "";
-                cout<<"**********[<"<<ui<<" LOGGED OUT>]**********\n";
+                std::cout<<"**********[<"<<ui<<" LOGGED OUT>]**********\n";
             }else{
-                cout<<"**********["<<response<<"]**********\n";
+                std::cout<<"**********["<<response<<"]**********\n";
             }
         }
     }
@@ -509,13 +568,13 @@ void client(string req, string ip, int port) {
     //create_group <group_id>
     else if(command[0] == "create_group"){
         if(command.size() != 2){
-            cout<<"Invalid number of arguments. Try => create_group <group_id>\n";
+            std::cout<<"Invalid number of arguments. Try => create_group <group_id>\n";
             return;
         }
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         
@@ -528,9 +587,9 @@ void client(string req, string ip, int port) {
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         if(response == "<CREATED GROUP>"){
-            cout<<"**********[<GROUP "<<command[1]<<" CREATED>]**********\n";
+            std::cout<<"**********[<GROUP "<<command[1]<<" CREATED>]**********\n";
         }else{
-            cout<<"**********["<<response<<"]**********\n";
+            std::cout<<"**********["<<response<<"]**********\n";
         }
 
     }
@@ -538,31 +597,31 @@ void client(string req, string ip, int port) {
     //list_groups
     else if(command[0] == "list_groups"){
         if(command.size() != 1){
-            cout<<"Invalid number of arguments. Try => list_groups\n";
+            std::cout<<"Invalid number of arguments. Try => list_groups\n";
             return;
         }
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
 
         string response(res);
-        cout<<"**********["<<response<<"]**********\n";
+        std::cout<<"**********["<<response<<"]**********\n";
 
     }
 
     //join_group <group_id>
     else if(command[0] == "join_group"){
         if(command.size() != 2){
-            cout<<"Invalid number of arguments. Try => join_group <group_id>\n";
+            std::cout<<"Invalid number of arguments. Try => join_group <group_id>\n";
             return;
         }
 
         if(userid.size() == 0){
-            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            std::cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
             return;
         }
 
@@ -571,23 +630,23 @@ void client(string req, string ip, int port) {
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        cout<<"**********["<<response<<"]**********\n";
+        std::cout<<"**********["<<response<<"]**********\n";
     }
 
     //list_requests <group_id>
     else if(command[0] == "list_requests"){
         if(command.size() != 2){
-            cout<<"Invalid number of arguments. Try => list_requests <group_id>\n";
+            std::cout<<"Invalid number of arguments. Try => list_requests <group_id>\n";
             return;
         }
 
         if(userid.size() == 0){
-            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            std::cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
             return;
         }
 
@@ -596,24 +655,24 @@ void client(string req, string ip, int port) {
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        cout<<"**********["<<response<<"]**********\n";
+        std::cout<<"**********["<<response<<"]**********\n";
 
     }
 
     //accept_request <group_id> <user_id>
     else if(command[0] == "accept_request"){
         if(command.size() != 3){
-            cout<<"Invalid number of arguments. Try => accept_request <group_id> <user_id>\n";
+            std::cout<<"Invalid number of arguments. Try => accept_request <group_id> <user_id>\n";
             return;
         }
 
         if(userid.size() == 0){
-            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            std::cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
             return;
         }
 
@@ -622,24 +681,24 @@ void client(string req, string ip, int port) {
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        cout<<"**********["<<response<<"]**********\n";
+        std::cout<<"**********["<<response<<"]**********\n";
 
     }
 
     //leave_group <group_id>
     else if(command[0] == "leave_group"){
         if(command.size() != 2){
-            cout<<"Invalid number of arguments. Try => leave_group <group_id>\n";
+            std::cout<<"Invalid number of arguments. Try => leave_group <group_id>\n";
             return;
         }
 
         if(userid.size() == 0){
-            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            std::cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
             return;
         }
 
@@ -648,30 +707,30 @@ void client(string req, string ip, int port) {
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        cout<<"**********["<<response<<"]**********\n";
+        std::cout<<"**********["<<response<<"]**********\n";
     }
 
     //upload_file <file_path> <group_id>
     else if(command[0] == "upload_file"){
         if(command.size() != 3){
-            cout<<"Invalid number of arguments. Try => upload_file <file_path> <group_id>\n";
+            std::cout<<"Invalid number of arguments. Try => upload_file <file_path> <group_id>\n";
             return;
         }
 
         if(userid.size() == 0){
-            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            std::cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
             return;
         }
 
         char buf[PATH_MAX]; 
         char *result = realpath(command[1].c_str(), buf);
         if(!result){
-            cout<<"**********[<FILE NOT FOUND>]**********\n";
+            std::cout<<"**********[<FILE NOT FOUND>]**********\n";
             return;
         }
         string buffer(buf);
@@ -687,12 +746,12 @@ void client(string req, string ip, int port) {
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        cout<<"**********["<<response<<"]**********\n";
+        std::cout<<"**********["<<response<<"]**********\n";
         if(response == "<UPLOADED FILE>"){
             string fileName = getFileName(buffer);
 
@@ -732,38 +791,38 @@ void client(string req, string ip, int port) {
     //list_files <group_id>
     else if(command[0] == "list_files"){
         if(command.size() != 2){
-            cout<<"Invalid number of arguments. Try => list_files <group_id>\n";
+            std::cout<<"Invalid number of arguments. Try => list_files <group_id>\n";
             return;
         }
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        cout<<"**********["<<response<<"]**********\n";
+        std::cout<<"**********["<<response<<"]**********\n";
     }
 
     //download_file <group_id> <file_name> <destination_path>
     else if(command[0] == "download_file"){
         if(command.size() != 4){
-            cout<<"Invalid number of arguments. Try => download_file <group_id> <file_name> <destination_path>\n";
+            std::cout<<"Invalid number of arguments. Try => download_file <group_id> <file_name> <destination_path>\n";
             return;
         }
 
         if(userid.size() == 0){
-            cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
+            std::cout<<"**********[<NO USER FOUND - LOGIN TO CONTINUE>]**********\n";
             return;
         }
 
         char buf[PATH_MAX]; 
-        memset(buf, 0, PATH_MAX);
+        std::memset(buf, 0, PATH_MAX);
         char *result = realpath(command[3].c_str(), buf);
         
         if(!result){
-            cout<<"**********[<DESTINATION NOT FOUND>]**********\n";
+            std::cout<<"**********[<DESTINATION NOT FOUND>]**********\n";
             return;
         }
 
@@ -772,39 +831,72 @@ void client(string req, string ip, int port) {
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
 
 
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        memset(res, 0, 20000);
+        std::memset(res, 0, 20000);
 
         if(response == "<ERROR1>"){
-            cout<<"**********[<GROUP DOESN'T EXIST>]**********\n";
+            std::cout<<"**********[<GROUP DOESN'T EXIST>]**********\n";
         }else if(response == "<ERROR2>"){
-            cout<<"**********[<FILE DOESN'T EXIST IN THE GROUP>]**********\n";
+            std::cout<<"**********[<FILE DOESN'T EXIST IN THE GROUP>]**********\n";
         }else if(response == "<ERROR3>"){
-            cout<<"**********[<USER NOT A MEMBER OF THE GROUP>]**********\n";
+            std::cout<<"**********[<USER NOT A MEMBER OF THE GROUP>]**********\n";
         }else{
 
-            cout<<"**********[<USERS WITH FILE>: "<<response<<"]**********\n";
+            std::cout<<"**********[<USERS WITH FILE>: "<<response<<"]**********\n";
 
             //
             //considering response only has one user id
             //
+            vector<string> usersInfo = processCommand(response);
+            vector<vector<string>> userDetails;
+            for(string userInfo : usersInfo){
+                vector<string> tokens;
+                string delimiter = "-";
+
+                size_t pos = 0;
+                string token;
+                while ((pos = userInfo.find(delimiter)) != string::npos) {
+                    token = userInfo.substr(0, pos);
+                    tokens.push_back(token);
+                    userInfo.erase(0, pos + delimiter.length());
+                }
+                tokens.push_back(userInfo);
+                string peerUserId = tokens[0];
+                string peerIp = tokens[1];
+                string peerPort = tokens[2];
+                userDetails.push_back({peerUserId, peerIp, peerPort});
+            }
+
             string destinationPath = command[3];
-            thread peerThread(peerThreadCode, response, command[2], port, destinationPath);
+            string peerId = userDetails[0][0];
+            string peerIp = userDetails[0][1];
+            int peerPort = atoi(userDetails[0][2].c_str());
+            thread peerThread(peerThreadCodeForOnePeer, response, command[2], port, destinationPath, peerIp, peerPort);
             peerThread.join();
-            
+
+            //
+            //considering multiple users with file
+            //
+            // vector<string> usersWithFile = processCommand(response);
+            // unordered_map<string, string> userToBitMap;
+            // for(string user : usersWithFile){
+
+            // }
+
+
         }
     }
 
     else{
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
-            cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
             return;
         }
         client.request(&client, ip, client.port, req, 20000, 0);
@@ -821,8 +913,8 @@ int main(int n, char* argv[]){
     tracker = getTrackerDetails(trackerInfoDest);
 
     //127.0.0.3:2022
-    cout<<"[Tracker Used]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
-    cout<<"[Peer Client]:    IP=> "<<ip<<" | PORT=> "<<port<<"\n";
+    std::cout<<"[Tracker Used]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
+    std::cout<<"[Peer Client]:    IP=> "<<ip<<" | PORT=> "<<port<<"\n";
 
     thread serverThread(server, port);
 

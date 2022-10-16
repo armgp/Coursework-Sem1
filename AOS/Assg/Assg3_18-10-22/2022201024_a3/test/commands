@@ -1,0 +1,12 @@
+create_user u u
+create_user r r
+login u u
+create_group g
+upload_file song.mp4 g
+
+login r r
+join_group g
+
+accept_request g r
+
+download_file g song.mp4 ./r
