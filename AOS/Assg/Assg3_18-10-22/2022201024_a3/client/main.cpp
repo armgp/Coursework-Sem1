@@ -15,6 +15,7 @@
 #include <limits.h> 
 #include <unordered_map>
 #include <fcntl.h>
+#include <semaphore.h>
 #include "logger.h"
 
 using namespace std;
@@ -351,6 +352,25 @@ struct Client clientConstructor(int domain, int type, int protocol, int port, u_
     return client;
 }
 
+void getUsersBitMapThread(string peerIp, int peerPort, string fileName, string peerId, unordered_map<string, string>& userToBitMap, sem_t& mutex){
+    struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+    if(client2.socket == -1){
+        std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+        return;
+    }
+    string getFileBitMapReq = "getbitmap ";
+    
+    getFileBitMapReq+=fileName;
+    char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000, 0);
+    string stringBitMap(res2);
+
+    sem_wait(&mutex);
+    userToBitMap[peerId] = stringBitMap;
+    sem_post(&mutex);
+
+    std::cout<<"<BITMAP RECEIVED FROM: >"<<peerId<<"\n";
+}
+
 void peerThreadCodeForOnePeer(string peer1, string fileName, int port, string destinationPath, string peerIp, int peerPort){
 
             struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
@@ -406,77 +426,49 @@ void peerThreadCodeForOnePeer(string peer1, string fileName, int port, string de
             std::cout<<"<DOWNLOAD SUCCESSFULL>\n";
 }
 
-void downloadChunkFromPeer(string peer, string fileName, int port, string destinationPath, int chunkNo){
-    struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-            if(client1.socket == -1){
-                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-                return;
-            }
-    
-            //space important after "getuserdetails "
-            string getUserDets = "getuserdetails ";
-            getUserDets+=peer;
-            char* res1 = client1.request(&client1, tracker.ip, tracker.port, getUserDets, 20000, 0);
-            string response1(res1);
-            vector<string> dets = processCommand(response1);
-            string peerIp = dets[0];
-            int peerPort = stoi(dets[1]);
+// void downloadChunkFromPeer(string peer1, string fileName, int port, string destinationPath, string peerIp, int peerPort, int chunkNo){
 
-            struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
-            if(client2.socket == -1){
-                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-                return;
-            }
-
-            string getFileBitMapReq = "getbitmap ";
             
-            getFileBitMapReq+=fileName;
-            char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000, 0);
-            string stringBitMap(res2);
-            pair<vector<bool>, int> bitMapInfo = convertStringToBitMap(stringBitMap);
-            std::cout<<"<BITMAP RECEIVED>\n";
-       
-            vector<bool> bitMap = bitMapInfo.first;
-            int lastChunkSize = bitMapInfo.second;
-            int chunkSize = 1024*512;
-            int noOfChunks = bitMap.size();
-            destinationPath+="/";
-            destinationPath+=fileName;
-            ofstream downloadedFile;
-            downloadedFile.open(destinationPath, ofstream::binary|std::ofstream::app);
+//             vector<bool> bitMap = bitMapInfo.first;
+//             int lastChunkSize = bitMapInfo.second;
+//             int chunkSize = 1024*512;
+//             int noOfChunks = bitMap.size();
+//             destinationPath+="/";
+//             destinationPath+=fileName;
+//             ofstream downloadedFile;
+//             downloadedFile.open(destinationPath, ofstream::binary|std::ofstream::app);
 
            
-            int currChunkSize = chunkSize;
-            if(chunkNo == noOfChunks-1){
-                currChunkSize = lastChunkSize;
-            }
+//             int currChunkSize = chunkSize;
+//             if(chunkNo == noOfChunks-1){
+//                 currChunkSize = lastChunkSize;
+//             }
 
-            string downloadFileReq = "download ";
-            downloadFileReq+=fileName;
-            downloadFileReq+=" ";
-            downloadFileReq+=to_string(chunkNo);
-            struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
-            if(client2.socket == -1){
-                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-                return;
-            }
+//             string downloadFileReq = "download ";
+//             downloadFileReq+=fileName;
+//             downloadFileReq+=" ";
+//             downloadFileReq+=to_string(chunkNo);
+//             struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+//             if(client2.socket == -1){
+//                 std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+//                 return;
+//             }
 
-            char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
-            string response3(res3);
+//             char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
+//             string response3(res3);
             
-            if(response3 == "<CHUNK DOWNLOAD FAILED>"){
-                std::cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<chunkNo<<"\n";
-                return;
-            }
+//             if(response3 == "<CHUNK DOWNLOAD FAILED>"){
+//                 std::cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<chunkNo<<"\n";
+//                 return;
+//             }
 
-            downloadedFile.write(res3, currChunkSize);
+//             downloadedFile.write(res3, currChunkSize);
             
         
-            downloadedFile.close();
+//             downloadedFile.close();
 
-            std::cout<<"<DOWNLOADED CHUNK>: "<<chunkNo<<"\n";
-}
-
+//             std::cout<<"<DOWNLOADED CHUNK>: "<<chunkNo<<"\n";
+// }
 
 
 void client(string req, string ip, int port) {
@@ -873,21 +865,41 @@ void client(string req, string ip, int port) {
                 userDetails.push_back({peerUserId, peerIp, peerPort});
             }
 
-            string destinationPath = command[3];
-            string peerId = userDetails[0][0];
-            string peerIp = userDetails[0][1];
-            int peerPort = atoi(userDetails[0][2].c_str());
-            thread peerThread(peerThreadCodeForOnePeer, response, command[2], port, destinationPath, peerIp, peerPort);
-            peerThread.join();
+            // string destinationPath = command[3];
+            // string peerId = userDetails[0][0];
+            // string peerIp = userDetails[0][1];
+            // int peerPort = atoi(userDetails[0][2].c_str());
+            // thread peerThread(peerThreadCodeForOnePeer, response, command[2], port, destinationPath, peerIp, peerPort);
+            // peerThread.join();
 
             //
             //considering multiple users with file
             //
-            // vector<string> usersWithFile = processCommand(response);
-            // unordered_map<string, string> userToBitMap;
-            // for(string user : usersWithFile){
+            
+            unordered_map<string, string> userToBitMap;
+            string fileName = command[2];
+            vector<thread> bitMapThreads;
 
-            // }
+            sem_t mutex;
+            sem_init(&mutex, 0, 1);
+            for(vector<string> usDet : userDetails){
+                string peerId = usDet[0];
+                string peerIp = usDet[1];
+                int peerPort = atoi(usDet[2].c_str());
+                bitMapThreads.push_back(thread(getUsersBitMapThread, peerIp, peerPort, fileName, peerId, ref(userToBitMap), ref(mutex)));
+            }
+
+            for (thread &t : bitMapThreads) {
+                if(t.joinable()) t.join();
+            }
+            sem_destroy(&mutex);
+            
+            bitMapThreads.clear();
+            std::cout<<"<ALL BITMAPS RECEIVED>\n";
+
+            for(auto ub : userToBitMap){
+                cout<<ub.first<<"--> "<<ub.second<<"\n";
+            }
 
 
         }
@@ -903,6 +915,7 @@ void client(string req, string ip, int port) {
     }
 
 }
+
 
 /* main function */
 int main(int n, char* argv[]){

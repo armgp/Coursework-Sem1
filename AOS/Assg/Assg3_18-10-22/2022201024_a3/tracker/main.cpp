@@ -597,22 +597,22 @@ void processClientRequest(struct ThreadParams params){
         }
 
         //getuserdetails uid
-        else if(command[0] == "getuserdetails"){
-            string uid = command[1];
-            string res = "";
+        // else if(command[0] == "getuserdetails"){
+        //     string uid = command[1];
+        //     string res = "";
 
-            if(UsersMap.find(uid) == UsersMap.end()){
-                cout<<"<ERROR>: USER NOT FOUND -> "<<uid<<"\n";
-                send(newSocketFd, "<USER NOT FOUND>", 17, 0);
-            }
-            else{
-                res+=UsersMap[uid].ip;
-                res+=" ";
-                res+=to_string(UsersMap[uid].port);
-                cout<<"<SEND>: USER DATA SUCCESFULLY FORWARDED\n";
-                send(newSocketFd, res.c_str(), res.size(), 0);
-            }
-        }
+        //     if(UsersMap.find(uid) == UsersMap.end()){
+        //         cout<<"<ERROR>: USER NOT FOUND -> "<<uid<<"\n";
+        //         send(newSocketFd, "<USER NOT FOUND>", 17, 0);
+        //     }
+        //     else{
+        //         res+=UsersMap[uid].ip;
+        //         res+=" ";
+        //         res+=to_string(UsersMap[uid].port);
+        //         cout<<"<SEND>: USER DATA SUCCESFULLY FORWARDED\n";
+        //         send(newSocketFd, res.c_str(), res.size(), 0);
+        //     }
+        // }
 
         else{
             if(request == "quit"){
@@ -668,16 +668,23 @@ void server(int port, string ip){
 
     bool status = true;
 
+    //take care of joining threads.
+    vector<thread> clientReqThreads;
     while(status){
         int newSocketFd = accept(server.socket, address, &addressLen);
         struct ThreadParams params;
         params.newSocketFd = newSocketFd;
         params.server = server;
         params.status = &status;  
-
-        thread clientReqHandleThread(processClientRequest, params);
-        clientReqHandleThread.join();
+        clientReqThreads.emplace_back(processClientRequest, params);
+        // thread clientReqHandleThread(processClientRequest, params);
+        // clientReqHandleThread.join();
     }
+
+    for (thread &t : clientReqThreads) {
+        if(t.joinable()) t.join();
+    }
+    clientReqThreads.clear();
 }
 
 
