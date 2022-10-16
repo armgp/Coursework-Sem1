@@ -72,7 +72,7 @@ public:
     string adminUserId;
     set<string> userIds;
     set<string> pendingRequests; //userids
-    unordered_map<string, vector<string>> shareableFiles; //filename-> <vector>userids
+    unordered_map<string, set<string>> shareableFiles; //filename-> <vector>userids
 };
 
 unordered_map<string, string> sharedFileDets;
@@ -135,7 +135,7 @@ Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
     return tracker;
 }
 
-vector<string> processCommand(string s){
+vector<string> divideStringBySpaces(string s){
     int n = s.size();
     int st = 0;
     vector<string> res;
@@ -195,7 +195,7 @@ void processClientRequest(struct ThreadParams params){
             *status = false;
         }
 
-        vector<string> command = processCommand(request);
+        vector<string> command = divideStringBySpaces(request);
 
         // create_user <user_id> <password> 
         if(command[0] == "create_user"){
@@ -508,7 +508,7 @@ void processClientRequest(struct ThreadParams params){
                     }else{
                         string fileName = getFileName(filePath);
                         //filename-> <vector>userids
-                        Groups[groupId].shareableFiles[fileName].push_back(userId);
+                        Groups[groupId].shareableFiles[fileName].insert(userId);
                         UsersMap[userId].files.insert(fileName);
 
                         cout<<"<UPLOADED>\n";
@@ -575,7 +575,7 @@ void processClientRequest(struct ThreadParams params){
                 }
 
                 else{
-                    vector<string> userIds = (Groups[groupId].shareableFiles)[fileName];
+                    set<string> userIds = (Groups[groupId].shareableFiles)[fileName];
                     string res = "";
                     for(string uid : userIds){
                         //uid-ip-port-
