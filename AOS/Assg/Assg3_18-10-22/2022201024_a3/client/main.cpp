@@ -156,31 +156,12 @@ Tracker getTrackerDetails(string trackerInfoDest){
 int createUserDirectory(string userId){
     string destinationDirectory = DESTDIR;
     string path=destinationDirectory+"/"+userId;
-    string pathDownloads = path+"/downloads";
-    string pathUploads = path+"/uploads";
     mode_t perms = S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH;
     int d = mkdir(path.c_str(), perms);
-    int dd = mkdir(pathDownloads.c_str(), perms);
-    int du = mkdir(pathUploads.c_str(), perms);
-    if (d==-1 || dd==-1 || du==-1){
+    if (d==-1){
         return 1;
     }
-    createdDirectories.insert(createdDirectories.begin(), pathDownloads);
-    createdDirectories.insert(createdDirectories.begin(), pathUploads);
-    createdDirectories.push_back(path);
     return 0;
-}
-
-void deleteAllDirs(){
-    int stat = 0;
-    for(string path : createdDirectories) {
-        stat+=rmdir(path.c_str());
-    }
-    if(stat<0){
-        std::cout<<"**********[<ERROR WHILE CREATING CLIENT DIRECTORY>]**********\n";
-    }else{
-        std::cout<<"**********[<SUCCESSFULLY CLEANED CLIENT DIRECTORY>]**********\n";
-    }
 }
 
 /* server code */
@@ -274,6 +255,8 @@ void server(int port){
             file.close();
 
             send(newSocketFd, buffer, chunkSize, 0);
+            std::cout<<buffer<<"\n";
+            std::memset(buffer, 0, chunkSize);
             std::cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
         }
 
@@ -426,9 +409,67 @@ void peerThreadCodeForOnePeer(string peer1, string fileName, int port, string de
             std::cout<<"<DOWNLOAD SUCCESSFULL>\n";
 }
 
-void downloadChunkFromPeer(string fileName, string destinationPath, string peerIp, int peerPort, int chunkNo, int currChunkSize, sem_t& mutex){
+void peerThreadCodeForOnePeer2(string peer1, string fileName, int port, string destinationPath, string peerIp, int peerPort){
 
-    int chunkSize = 1024*512;
+            struct Client client2 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+            if(client2.socket == -1){
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+
+            string getFileBitMapReq = "getbitmap ";
+            
+            getFileBitMapReq+=fileName;
+            char* res2 = client2.request(&client2, peerIp, peerPort, getFileBitMapReq, 20000, 0);
+            string stringBitMap(res2);
+            pair<vector<bool>, int> bitMapInfo = convertStringToBitMap(stringBitMap);
+            std::cout<<"<BITMAP RECEIVED>\n";
+       
+            vector<bool> bitMap = bitMapInfo.first;
+            int lastChunkSize = bitMapInfo.second;
+            int chunkSize = 1024*512;
+            int noOfChunks = bitMap.size();
+            destinationPath+="/";
+            destinationPath+=fileName;
+
+            // ofstream downloadedFile;
+            // downloadedFile.open(destinationPath, ofstream::binary|std::ofstream::app);
+
+            int fd = open(destinationPath.c_str(), O_CREAT|O_RDWR, 0666);
+
+            for(int i=0; i<noOfChunks; i++){
+                int currChunkSize = chunkSize;
+                if(i == noOfChunks-1){
+                    currChunkSize = lastChunkSize;
+                }
+                string downloadFileReq = "download ";
+                downloadFileReq+=fileName;
+                downloadFileReq+=" ";
+                downloadFileReq+=to_string(i);
+                struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+                if(client2.socket == -1){
+                    std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                    return;
+                }
+
+                char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
+                string response3(res3);
+                
+                if(response3 == "<CHUNK DOWNLOAD FAILED>"){
+                    std::cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<i<<"\n";
+                    return;
+                }
+                // downloadedFile.write(res3, currChunkSize);
+                pwrite(fd, res3, currChunkSize, i*chunkSize);
+                bzero(res3, sizeof(res3));
+            }
+        
+            close(fd);
+
+            std::cout<<"<DOWNLOAD SUCCESSFULL>\n";
+}
+
+void downloadChunkFromPeer(string fileName, string destinationPath, string peerIp, int peerPort, int chunkNo, int currChunkSize, sem_t& mutex){
     
     destinationPath+="/";
     destinationPath+=fileName;
@@ -455,6 +496,8 @@ void downloadChunkFromPeer(string fileName, string destinationPath, string peerI
     downloadedFile.open(destinationPath, ofstream::binary);
     downloadedFile.seekp(chunkNo*1024*512);
     downloadedFile.write(res3, currChunkSize);
+    std::cout<<res3<<"\n";
+    std::memset(res3, 0, currChunkSize);
     sem_post(&mutex);
     
     
@@ -861,7 +904,7 @@ void client(string req, string ip, int port) {
             // string peerId = userDetails[0][0];
             // string peerIp = userDetails[0][1];
             // int peerPort = atoi(userDetails[0][2].c_str());
-            // thread peerThread(peerThreadCodeForOnePeer, response, command[2], port, destinationPath, peerIp, peerPort);
+            // thread peerThread(peerThreadCodeForOnePeer2, response, command[2], port, destinationPath, peerIp, peerPort);
             // peerThread.join();
 
             //
@@ -883,7 +926,7 @@ void client(string req, string ip, int port) {
             }
 
             for (thread &t : bitMapThreads) {
-                if(t.joinable()) t.join();
+                t.join();
             }
             sem_destroy(&mutex);
 
@@ -915,6 +958,7 @@ void client(string req, string ip, int port) {
                 t.join();
             }
             sem_destroy(&mutex1);
+
             downloadChunkThreads.clear();
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
         }

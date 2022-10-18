@@ -682,7 +682,7 @@ void server(int port, string ip){
     }
 
     for (thread &t : clientReqThreads) {
-        if(t.joinable()) t.join();
+        t.join();
     }
     clientReqThreads.clear();
 }
