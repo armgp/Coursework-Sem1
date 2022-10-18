@@ -255,7 +255,6 @@ void server(int port){
             file.close();
 
             send(newSocketFd, buffer, chunkSize, 0);
-            std::cout<<buffer<<"\n";
             std::memset(buffer, 0, chunkSize);
             std::cout<<"<CHUNK "<<positionOfChunk<<" SEND>\n";
         }
@@ -469,10 +468,7 @@ void peerThreadCodeForOnePeer2(string peer1, string fileName, int port, string d
             std::cout<<"<DOWNLOAD SUCCESSFULL>\n";
 }
 
-void downloadChunkFromPeer(string fileName, string destinationPath, string peerIp, int peerPort, int chunkNo, int currChunkSize, sem_t& mutex){
-    
-    destinationPath+="/";
-    destinationPath+=fileName;
+void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chunkNo, int currChunkSize, int fd){
     
     string downloadFileReq = "download ";
     downloadFileReq+=fileName;
@@ -491,17 +487,8 @@ void downloadChunkFromPeer(string fileName, string destinationPath, string peerI
         return;
     }
 
-    sem_wait(&mutex);
-    ofstream downloadedFile;
-    downloadedFile.open(destinationPath, ofstream::binary);
-    downloadedFile.seekp(chunkNo*1024*512);
-    downloadedFile.write(res3, currChunkSize);
-    std::cout<<res3<<"\n";
-    std::memset(res3, 0, currChunkSize);
-    sem_post(&mutex);
-    
-    
-    downloadedFile.close();
+    pwrite(fd, res3, currChunkSize, chunkNo*1024*512);
+
     std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" SUCCESSFULL>\n";
 }
 
@@ -916,6 +903,7 @@ void client(string req, string ip, int port) {
             string destinationPath = command[3];
             vector<thread> bitMapThreads;
 
+            //threads to get all the bitmaps from seeders
             sem_t mutex;
             sem_init(&mutex, 0, 1);
             for(vector<string> usDet : userDetails){
@@ -937,27 +925,31 @@ void client(string req, string ip, int port) {
                 cout<<ub.first<<"--> "<<ub.second<<"\n";
             }
 
+
+            //threads to download from seeders
             int noOfSeeders = userDetails.size();
             vector<string> bitMapInfo = divideStringBySpaces(userToBitMap[userDetails[0][0]]);
             string bitMap = bitMapInfo[0];
             int noOfChunks = bitMap.size();
             vector<thread> downloadChunkThreads;
 
-            sem_t mutex1;
-            sem_init(&mutex1, 0, 1);
+            destinationPath+="/";
+            destinationPath+=fileName;
+            int fd = open(destinationPath.c_str(), O_CREAT|O_RDWR, 0666);
+
             for(int i=0; i<noOfChunks; i++){
                 int seeder = i%noOfSeeders;
                 string seederIp = userDetails[seeder][1];
                 int seederPort = atoi(userDetails[seeder][2].c_str());
                 int chunkSize = 512*1024;
                 if(i == noOfChunks-1) chunkSize = atoi(bitMapInfo[1].c_str());
-                downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, destinationPath, seederIp, seederPort, i, chunkSize, ref(mutex1));
+                downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, i, chunkSize, fd);
             }
 
             for (thread &t : downloadChunkThreads) {
                 t.join();
             }
-            sem_destroy(&mutex1);
+            close(fd);
 
             downloadChunkThreads.clear();
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
