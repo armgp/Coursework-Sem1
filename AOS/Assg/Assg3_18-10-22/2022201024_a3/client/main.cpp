@@ -16,6 +16,7 @@
 #include <unordered_map>
 #include <fcntl.h>
 #include <semaphore.h>
+#include <openssl/sha.h>
 #include "logger.h"
 
 using namespace std;
@@ -162,6 +163,43 @@ int createUserDirectory(string userId){
         return 1;
     }
     return 0;
+}
+
+string getShaOfString(string value){
+    int i = 0;
+    unsigned char temp[SHA_DIGEST_LENGTH];
+    char buf[SHA_DIGEST_LENGTH*2];
+
+    memset(buf, 0x0, SHA_DIGEST_LENGTH*2);
+    memset(temp, 0x0, SHA_DIGEST_LENGTH);
+
+    SHA1((unsigned char *)value.c_str(), value.size(), temp);
+
+    for (i=0; i < SHA_DIGEST_LENGTH; i++) {
+        sprintf((char*)&(buf[i*2]), "%02x", temp[i]);
+    }
+
+    string res(buf);
+    return res;
+}
+
+string getChunkWiseSha(string path){
+    char buffer[524288];
+    int readByte;
+    string res = "";
+
+    int fd = open(path.c_str(), O_RDONLY);
+    if (fd < 0)
+        return "-1";
+    else{
+        while ((readByte = read(fd, buffer, 524288)) > 0){
+            string buf(buffer);
+            res+=getShaOfString(buf);
+            memset(buffer, 0, 524288);
+        }
+    }
+
+    return res;
 }
 
 /* server code */
@@ -460,7 +498,7 @@ void peerThreadCodeForOnePeer2(string peer1, string fileName, int port, string d
                 }
                 // downloadedFile.write(res3, currChunkSize);
                 pwrite(fd, res3, currChunkSize, i*chunkSize);
-                bzero(res3, sizeof(res3));
+                bzero(res3, currChunkSize);
             }
         
             close(fd);
@@ -488,8 +526,11 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
     }
 
     pwrite(fd, res3, currChunkSize, chunkNo*1024*512);
+    string currChunk(res3);
+    string currChunkSha1 = getShaOfString(currChunk);
 
     std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" SUCCESSFULL>\n";
+
 }
 
 
@@ -748,6 +789,7 @@ void client(string req, string ip, int port) {
             return;
         }
         string buffer(buf);
+        string sha1 = getChunkWiseSha(buffer);
 
         req="";
         req+=command[0];
@@ -757,6 +799,8 @@ void client(string req, string ip, int port) {
         req+=command[2];
         req+=" ";
         req+=userid;
+        req+=" ";
+        req+=sha1;
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
@@ -793,11 +837,6 @@ void client(string req, string ip, int port) {
             vector<bool> bitMap(noOfChunks, true);
             fileToBitMap[fileName] = make_pair(bitMap, lastChunkSize);
 
-            // if(bytesLeft > 0){
-            //     bitmap.push_back(make_pair(1, bytesLeft));
-            // }
-            
-            // fileMap[fileName] = bitmap;
             fileLocMap[fileName] = buffer;
         }
     }
@@ -951,8 +990,29 @@ void client(string req, string ip, int port) {
             }
             close(fd);
 
+            string downloadedFileSha1 = getChunkWiseSha(destinationPath);
+            
             downloadChunkThreads.clear();
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
+
+            struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            if(client1.socket == -1){
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+
+            string req1 = "getSha1 ";
+            req1+=fileName;
+
+            char* res1 = client1.request(&client1, tracker.ip, tracker.port, req1, downloadedFileSha1.size(), 1);
+            string response1(res1);
+            std::memset(res1, 0, downloadedFileSha1.size());
+            if(response1.substr(0, downloadedFileSha1.size()) == downloadedFileSha1){
+                std::cout<<"SHA1 MATCHED\n";
+            }else{
+                std::cout<<"FILE CORRUPTED!\n";
+            }
+
         }
     }
 

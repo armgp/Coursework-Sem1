@@ -75,6 +75,7 @@ public:
     unordered_map<string, set<string>> shareableFiles; //filename-> <vector>userids
 };
 
+unordered_map<string, string> fileNameToSha1Map; //fileName-> sha1
 unordered_map<string, string> sharedFileDets;
 unordered_map <string, User> UsersMap;
 unordered_map <string, Group> Groups; //groupId, Group
@@ -479,9 +480,9 @@ void processClientRequest(struct ThreadParams params){
             }
         }
 
-        //upload_file <file_path> <group_id> <user_id>
+        //upload_file <file_path> <group_id> <user_id> <sha1>
         else if(command[0] == "upload_file"){
-            if(command.size() != 4){
+            if(command.size() != 5){
                 cout<<"<LOGIN TO UPLOAD FILES>\n";
                 send(newSocketFd, "<LOGIN TO UPLOAD FILES>", 24, 0);
             }
@@ -490,6 +491,7 @@ void processClientRequest(struct ThreadParams params){
                 string filePath = command[1];
                 string groupId = command[2];
                 string userId = command[3];
+                string sha1 = command[4];
 
                 if(Groups.find(groupId) == Groups.end()){
                     cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
@@ -509,6 +511,7 @@ void processClientRequest(struct ThreadParams params){
                         string fileName = getFileName(filePath);
                         //filename-> <vector>userids
                         Groups[groupId].shareableFiles[fileName].insert(userId);
+                        fileNameToSha1Map[fileName] = sha1;
                         UsersMap[userId].files.insert(fileName);
 
                         cout<<"<UPLOADED>\n";
@@ -595,7 +598,13 @@ void processClientRequest(struct ThreadParams params){
 
             }
         }
-
+        
+        //getSha1 <fileName> 
+        else if(command[0] == "getSha1"){
+            string fileName = command[1];
+            string sha1 = fileNameToSha1Map[fileName];
+            send(newSocketFd, sha1.c_str(), sha1.size(), 0);
+        }
         //getuserdetails uid
         // else if(command[0] == "getuserdetails"){
         //     string uid = command[1];
