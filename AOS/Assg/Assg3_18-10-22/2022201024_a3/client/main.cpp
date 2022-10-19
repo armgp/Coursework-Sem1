@@ -517,20 +517,50 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
         std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
         return;
     }
-    char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
-    string response3(res3);
-    
-    if(response3 == "<CHUNK DOWNLOAD FAILED>"){
-        std::cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<chunkNo<<"\n";
-        return;
+
+    string status = "incomplete";
+    int count = 0;
+    while(status == "incomplete"){
+        char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
+        string response3(res3);
+        
+        if(response3 == "<CHUNK DOWNLOAD FAILED>"){
+            std::cout<<"<FAILED TO DOWNLOAD> CHUNK - "<<chunkNo<<"\n";
+            return;
+        }
+
+        string currChunkSha1 = getShaOfString(response3);
+        string req = "checkSha1chunk ";
+        req+=fileName;
+        req+=" ";
+        req+=to_string(chunkNo);
+        req+=" ";
+        req+=currChunkSha1;
+        
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
+        if(client.socket == -1){
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+
+        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
+        string response(res);
+
+        if(response == "SHA1 VERIFIED"){
+            std::cout<<"CHUNK NO: "<<chunkNo<<" -> "<<response<<"\n";
+            pwrite(fd, res3, currChunkSize, chunkNo*1024*512);
+            status = "completed";
+        }else count++;
+
+        if(count >= 7) status = "interrupted";
+
+        memset(res3, 0, currChunkSize);
+        memset(res, 0, 20000);
     }
 
-    pwrite(fd, res3, currChunkSize, chunkNo*1024*512);
-    string currChunk(res3);
-    string currChunkSha1 = getShaOfString(currChunk);
-
-    std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" SUCCESSFULL>\n";
-
+    if(status == "completed") std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" SUCCESSFULL>\n";
+    else std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" INCOMPLETE>\n";
+    
 }
 
 

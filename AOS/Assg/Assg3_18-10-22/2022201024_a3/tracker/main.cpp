@@ -605,6 +605,22 @@ void processClientRequest(struct ThreadParams params){
             string sha1 = fileNameToSha1Map[fileName];
             send(newSocketFd, sha1.c_str(), sha1.size(), 0);
         }
+
+        //getSha1 <fileName> <chunkNo> <sha1>
+        else if(command[0] == "checkSha1chunk"){
+            string fileName = command[1];
+            int chunkNo = atoi(command[2].c_str());
+            string sha1Recv = command[3];
+            string sha1Data = fileNameToSha1Map[fileName].substr(chunkNo*40, 40);
+         
+            if(sha1Data == sha1Recv){
+                send(newSocketFd, "SHA1 VERIFIED", 14, 0);
+                return;
+            }
+
+            send(newSocketFd, "CORRUPETD", 10, 0);
+        }
+
         //getuserdetails uid
         // else if(command[0] == "getuserdetails"){
         //     string uid = command[1];
