@@ -17,6 +17,7 @@
 #include <fcntl.h>
 #include <semaphore.h>
 #include <openssl/sha.h>
+#include <algorithm>
 #include "logger.h"
 
 using namespace std;
@@ -859,7 +860,7 @@ void client(string req, string ip, int port) {
             int bytesLeft = sz - noOfChunks*chunkSize;
             // vector<pair<bool,int>> bitmap(noOfChunks, make_pair(1, chunkSize));
             
-            int lastChunkSize;
+            int lastChunkSize=512*1024;
             if(bytesLeft > 0){
                 lastChunkSize = bytesLeft;
                 noOfChunks++;
@@ -934,10 +935,10 @@ void client(string req, string ip, int port) {
             std::cout<<"**********[<USERS WITH FILE>: "<<response<<"]**********\n";
 
             vector<string> usersInfo = divideStringByChar(response, ' ');
-            vector<vector<string>> userDetails;
+            unordered_map<string, pair<string, int>> userDetails;
             for(string userInfo : usersInfo){
                 vector<string> tokens = divideStringByChar(userInfo, '-');
-                userDetails.push_back({tokens[0], tokens[1], tokens[2]});
+                userDetails[tokens[0]] = make_pair(tokens[1], atoi(tokens[2].c_str()));
             }
             
             unordered_map<string, string> userToBitMap;
@@ -948,10 +949,10 @@ void client(string req, string ip, int port) {
             //threads to get all the bitmaps from seeders
             sem_t mutex;
             sem_init(&mutex, 0, 1);
-            for(vector<string> usDet : userDetails){
-                string peerId = usDet[0];
-                string peerIp = usDet[1];
-                int peerPort = atoi(usDet[2].c_str());
+            for(auto us : userDetails){
+                string peerId = us.first;
+                string peerIp = us.second.first;
+                int peerPort = us.second.second;
                 bitMapThreads.push_back(thread(getUsersBitMapThread, peerIp, peerPort, fileName, peerId, ref(userToBitMap), ref(mutex)));
             }
 
@@ -963,40 +964,94 @@ void client(string req, string ip, int port) {
             bitMapThreads.clear();
             std::cout<<"<ALL BITMAPS RECEIVED>\n";
 
+            unordered_map<string, pair<string, int>> userToStringBitMapAndLchunkSize;
+            string bitMap="";
+            int lastChunkVal=0;
             for(auto ub : userToBitMap){
                 cout<<ub.first<<"--> "<<ub.second<<"\n";
+                vector<string> vals = divideStringByChar(ub.second, ' ');
+                userToStringBitMapAndLchunkSize[ub.first] = make_pair(vals[0], atoi(vals[1].c_str()));
+                if(bitMap=="") bitMap = vals[0];
+                if(lastChunkVal==0) lastChunkVal=atoi(vals[1].c_str());
             }
 
-
-            //threads to download from seeders
-            int noOfSeeders = userDetails.size();
-            vector<string> bitMapInfo = divideStringByChar(userToBitMap[userDetails[0][0]], ' ');
-            string bitMap = bitMapInfo[0];
+            //chunkNo, noOfSeeders
             int noOfChunks = bitMap.size();
-            vector<thread> downloadChunkThreads;
+            vector<pair<int, int>> chunkNoToNoOfSeeders(noOfChunks, make_pair(0, 0));
+            unordered_map<int, vector<string>> chunkNoToSeeders;
+            for(int i=0; i<noOfChunks; i++){
+                chunkNoToNoOfSeeders[i].first = i;
+                for(auto u : userToStringBitMapAndLchunkSize){
+                    chunkNoToSeeders[i].push_back(u.first);
+                    string bm = u.second.first;
+                    if(bm[i]=='1'){
+                        chunkNoToNoOfSeeders[i].second++;
+                    }
+                }
+            }
+
+            sort(chunkNoToNoOfSeeders.begin(), chunkNoToNoOfSeeders.end(), [](pair<int, int>& a, pair<int, int>& b){
+                return a.second < b.second;
+            });
 
             destinationPath+="/";
             destinationPath+=fileName;
             int fd = open(destinationPath.c_str(), O_CREAT|O_RDWR, 0666);
 
-            for(int i=0; i<noOfChunks; i++){
-                int seeder = i%noOfSeeders;
-                string seederIp = userDetails[seeder][1];
-                int seederPort = atoi(userDetails[seeder][2].c_str());
+            vector<thread> downloadChunkThreads;
+            for(pair<int, int> p : chunkNoToNoOfSeeders){
+                int chunkNo = p.first;
+                vector<string> seeders = chunkNoToSeeders[chunkNo];
+                int max = seeders.size()-1;
+                int min = 0;
+                int randNum = rand()%(max-min + 1) + min;
+                string uid = seeders[randNum];
+                string seederIp = userDetails[uid].first;
+                int seederPort = userDetails[uid].second;
                 int chunkSize = 512*1024;
-                if(i == noOfChunks-1) chunkSize = atoi(bitMapInfo[1].c_str());
-                downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, i, chunkSize, fd);
+
+                if(chunkNo == noOfChunks-1) chunkSize = lastChunkVal;
+                downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, chunkNo, chunkSize, fd);
+                int n = downloadChunkThreads.size();
+                if(n==10){
+                    for(int i=0; i<n; i++){
+                        downloadChunkThreads[i].join();
+                    }
+                    for(int i=0; i<n; i++){
+                        downloadChunkThreads.pop_back();
+                    }
+                }
             }
 
             for (thread &t : downloadChunkThreads) {
                 t.join();
             }
             close(fd);
-
-            string downloadedFileSha1 = getChunkWiseSha(destinationPath);
             
             downloadChunkThreads.clear();
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
+
+            //threads to download from seeders
+            // int noOfSeeders = userDetails.size();
+            // vector<string> bitMapInfo = divideStringByChar(userToBitMap[userDetails[0][0]], ' ');
+            // string bitMap = bitMapInfo[0];
+            // int noOfChunks = bitMap.size();
+            // vector<thread> downloadChunkThreads;
+
+            // destinationPath+="/";
+            // destinationPath+=fileName;
+            // int fd = open(destinationPath.c_str(), O_CREAT|O_RDWR, 0666);
+
+            // for(int i=0; i<noOfChunks; i++){
+            //     int seeder = i%noOfSeeders;
+            //     string seederIp = userDetails[seeder][1];
+            //     int seederPort = atoi(userDetails[seeder][2].c_str());
+            //     int chunkSize = 512*1024;
+            //     if(i == noOfChunks-1) chunkSize = atoi(bitMapInfo[1].c_str());
+            //     downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, i, chunkSize, fd);
+            // }
+
+            //  string downloadedFileSha1 = getChunkWiseSha(destinationPath);
 
             //checing the entire sha1 again(not needed)
             // struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
