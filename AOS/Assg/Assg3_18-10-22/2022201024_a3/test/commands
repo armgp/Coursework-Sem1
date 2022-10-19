@@ -1,12 +1,25 @@
 create_user u u
 create_user r r
+create_user h h
 login u u
 create_group g
+upload_file song.mp4 g
+upload_file oneChunk.pdf g
 upload_file pdfFile.pdf g
 
 login r r
 join_group g
 
-accept_request g r
+login h h
+join_group g
 
-download_file g pdfFile.pdf ./r
+accept_request g r
+accept_request g h
+
+upload_file song.mp4 g
+upload_file oneChunk.pdf g
+upload_file pdfFile.pdf g
+
+download_file g oneChunk.pdf ./h
+download_file g song.mp4 ./h
+download_file g pdfFile.pdf ./h
