@@ -979,6 +979,7 @@ void client(string req, string ip, int port) {
             int noOfChunks = bitMap.size();
             vector<pair<int, int>> chunkNoToNoOfSeeders(noOfChunks, make_pair(0, 0));
             unordered_map<int, vector<string>> chunkNoToSeeders;
+            int firstChunkNo = -1;
             for(int i=0; i<noOfChunks; i++){
                 chunkNoToNoOfSeeders[i].first = i;
                 for(auto u : userToStringBitMapAndLchunkSize){
@@ -986,21 +987,36 @@ void client(string req, string ip, int port) {
                     string bm = u.second.first;
                     if(bm[i]=='1'){
                         chunkNoToNoOfSeeders[i].second++;
+                        if(firstChunkNo == -1) firstChunkNo = i;
+                        int udn = userDetails.size();
+                        if(chunkNoToNoOfSeeders[i].second == udn) firstChunkNo = i;
                     }
                 }
             }
 
+            int m = chunkNoToNoOfSeeders.size();
+            pair<int, int> lastEle = chunkNoToNoOfSeeders[m-1];
+            pair<int, int> randomFirst = chunkNoToNoOfSeeders[firstChunkNo];
+            chunkNoToNoOfSeeders[firstChunkNo] = lastEle;
+            chunkNoToNoOfSeeders[m-1] = randomFirst;
+            chunkNoToNoOfSeeders.pop_back();
+
             sort(chunkNoToNoOfSeeders.begin(), chunkNoToNoOfSeeders.end(), [](pair<int, int>& a, pair<int, int>& b){
-                return a.second < b.second;
+                return a.second > b.second;
             });
+            //prioritizing random chunk first
+            chunkNoToNoOfSeeders.push_back(randomFirst);
 
             destinationPath+="/";
             destinationPath+=fileName;
             int fd = open(destinationPath.c_str(), O_CREAT|O_RDWR, 0666);
 
+            //random chunk first and then rarest chunk first
             vector<thread> downloadChunkThreads;
-            for(pair<int, int> p : chunkNoToNoOfSeeders){
+            for(int i=m-1; i>=0; i--){
+                pair<int, int> p = chunkNoToNoOfSeeders[i];
                 int chunkNo = p.first;
+                
                 vector<string> seeders = chunkNoToSeeders[chunkNo];
                 int max = seeders.size()-1;
                 int min = 0;
@@ -1021,6 +1037,7 @@ void client(string req, string ip, int port) {
                         downloadChunkThreads.pop_back();
                     }
                 }
+                
             }
 
             for (thread &t : downloadChunkThreads) {
