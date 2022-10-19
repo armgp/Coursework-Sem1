@@ -136,12 +136,12 @@ Tracker getTrackerDetails(string trackerInfoDest, int trackerNo){
     return tracker;
 }
 
-vector<string> divideStringBySpaces(string s){
+vector<string> divideStringByChar(string s, char c){
     int n = s.size();
     int st = 0;
     vector<string> res;
     for(int i=0; i<n; i++){
-        if(s[i]==' '){
+        if(s[i]==c){
             res.push_back(s.substr(st, (i-st)));
             st = i+1;
         }
@@ -196,7 +196,7 @@ void processClientRequest(struct ThreadParams params){
             *status = false;
         }
 
-        vector<string> command = divideStringBySpaces(request);
+        vector<string> command = divideStringByChar(request, ' ');
 
         // create_user <user_id> <password> 
         if(command[0] == "create_user"){

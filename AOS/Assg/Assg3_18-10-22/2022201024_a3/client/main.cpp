@@ -46,12 +46,12 @@ unordered_map<string, string> fileLocMap; // fileName -> filePath
 vector<string> createdDirectories;
 
 /* utils */
-vector<string> divideStringBySpaces(string s){
+vector<string> divideStringByChar(string s, char c){
     int n = s.size();
     int st = 0;
     vector<string> res;
     for(int i=0; i<n; i++){
-        if(s[i]==' '){
+        if(s[i]==c){
             res.push_back(s.substr(st, (i-st)));
             st = i+1;
         }
@@ -79,7 +79,7 @@ string convertBitMapToString(pair<vector<bool>, int> bitMap){
 pair<vector<bool>, int> convertStringToBitMap(string str){
     vector<bool> v;
     int lastChunkSize;
-    vector<string> infos = divideStringBySpaces(str);
+    vector<string> infos = divideStringByChar(str, ' ');
     lastChunkSize = atoi(infos[1].c_str());
     for(char c : infos[0]){
         if(c == '1'){
@@ -261,7 +261,7 @@ void server(int port){
         read(newSocketFd, req, 1000);
         string request(req);
 
-        vector<string> commands = divideStringBySpaces(request);
+        vector<string> commands = divideStringByChar(request, ' ');
         if(commands[0] == "getbitmap"){
             string fileName = commands[1];
             string filePath = fileLocMap[fileName];
@@ -566,7 +566,7 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
 
 void client(string req, string ip, int port) {
 
-    vector<string> command = divideStringBySpaces(req);
+    vector<string> command = divideStringByChar(req, ' ');
 
     // create_user <user_id> <password>
     if(command[0] == "create_user"){
@@ -933,39 +933,12 @@ void client(string req, string ip, int port) {
 
             std::cout<<"**********[<USERS WITH FILE>: "<<response<<"]**********\n";
 
-            //
-            //considering response only has one user id
-            //
-            vector<string> usersInfo = divideStringBySpaces(response);
+            vector<string> usersInfo = divideStringByChar(response, ' ');
             vector<vector<string>> userDetails;
             for(string userInfo : usersInfo){
-                vector<string> tokens;
-                string delimiter = "-";
-
-                size_t pos = 0;
-                string token;
-                while ((pos = userInfo.find(delimiter)) != string::npos) {
-                    token = userInfo.substr(0, pos);
-                    tokens.push_back(token);
-                    userInfo.erase(0, pos + delimiter.length());
-                }
-                tokens.push_back(userInfo);
-                string peerUserId = tokens[0];
-                string peerIp = tokens[1];
-                string peerPort = tokens[2];
-                userDetails.push_back({peerUserId, peerIp, peerPort});
+                vector<string> tokens = divideStringByChar(userInfo, '-');
+                userDetails.push_back({tokens[0], tokens[1], tokens[2]});
             }
-
-            // string destinationPath = command[3];
-            // string peerId = userDetails[0][0];
-            // string peerIp = userDetails[0][1];
-            // int peerPort = atoi(userDetails[0][2].c_str());
-            // thread peerThread(peerThreadCodeForOnePeer2, response, command[2], port, destinationPath, peerIp, peerPort);
-            // peerThread.join();
-
-            //
-            //considering multiple users with file
-            //
             
             unordered_map<string, string> userToBitMap;
             string fileName = command[2];
@@ -997,7 +970,7 @@ void client(string req, string ip, int port) {
 
             //threads to download from seeders
             int noOfSeeders = userDetails.size();
-            vector<string> bitMapInfo = divideStringBySpaces(userToBitMap[userDetails[0][0]]);
+            vector<string> bitMapInfo = divideStringByChar(userToBitMap[userDetails[0][0]], ' ');
             string bitMap = bitMapInfo[0];
             int noOfChunks = bitMap.size();
             vector<thread> downloadChunkThreads;
@@ -1025,23 +998,22 @@ void client(string req, string ip, int port) {
             downloadChunkThreads.clear();
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
 
-            struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-            if(client1.socket == -1){
-                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-                return;
-            }
-
-            string req1 = "getSha1 ";
-            req1+=fileName;
-
-            char* res1 = client1.request(&client1, tracker.ip, tracker.port, req1, downloadedFileSha1.size(), 1);
-            string response1(res1);
-            std::memset(res1, 0, downloadedFileSha1.size());
-            if(response1.substr(0, downloadedFileSha1.size()) == downloadedFileSha1){
-                std::cout<<"SHA1 MATCHED\n";
-            }else{
-                std::cout<<"FILE CORRUPTED!\n";
-            }
+            //checing the entire sha1 again(not needed)
+            // struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            // if(client1.socket == -1){
+            //     std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            //     return;
+            // }
+            // string req1 = "getSha1 ";
+            // req1+=fileName;
+            // char* res1 = client1.request(&client1, tracker.ip, tracker.port, req1, downloadedFileSha1.size(), 1);
+            // string response1(res1);
+            // std::memset(res1, 0, downloadedFileSha1.size());
+            // if(response1.substr(0, downloadedFileSha1.size()) == downloadedFileSha1){
+            //     std::cout<<"SHA1 MATCHED\n";
+            // }else{
+            //     std::cout<<"FILE CORRUPTED!\n";
+            // }
 
         }
     }
