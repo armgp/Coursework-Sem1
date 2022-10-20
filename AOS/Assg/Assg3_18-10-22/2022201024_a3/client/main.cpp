@@ -117,7 +117,7 @@ void getArgDetails(string& ip, int& port, string& trackerInfoDest, char* arg[]){
     }
 }
 
-Tracker getTrackerDetails(string trackerInfoDest){
+vector<Tracker> getTrackerDetails(string trackerInfoDest){
     string jsonfile = "traker_info.json";
     ifstream trackerInfoFile;
     trackerInfoFile.open(trackerInfoDest);
@@ -142,18 +142,34 @@ Tracker getTrackerDetails(string trackerInfoDest){
     Json::FastWriter fastWriter; //converts Json::Value to string
 
     reader.parse(jsonFile, jsonData);
-    string id_s = fastWriter.write(jsonData["trackers"][0]["id"]);
-    string ip = fastWriter.write(jsonData["trackers"][0]["ip"]);
-    ip.pop_back();
-    ip.pop_back();
-    ip = ip.substr(1);
-    string port_s = fastWriter.write(jsonData["trackers"][0]["port"]);
-    int id = atoi(id_s.c_str());
-    int port = atoi(port_s.c_str());
+    
+    string id_s1 = fastWriter.write(jsonData["trackers"][0]["id"]);
+    string id_s2 = fastWriter.write(jsonData["trackers"][1]["id"]);
 
-    Tracker tracker(id, ip, port);
+    string ip1 = fastWriter.write(jsonData["trackers"][0]["ip"]);
+    ip1.pop_back();
+    ip1.pop_back();
+    ip1 = ip1.substr(1);
+    string ip2 = fastWriter.write(jsonData["trackers"][1]["ip"]);
+    ip2.pop_back();
+    ip2.pop_back();
+    ip2 = ip2.substr(1);
+
+    string port_s1 = fastWriter.write(jsonData["trackers"][0]["port"]);
+    int id1 = atoi(id_s1.c_str());
+    int port1 = atoi(port_s1.c_str());
+    string port_s2 = fastWriter.write(jsonData["trackers"][1]["port"]);
+    int id2 = atoi(id_s2.c_str());
+    int port2 = atoi(port_s2.c_str());
+
+    vector<Tracker> res;
+    Tracker tracker1(id1, ip1, port1);
+    Tracker tracker2(id2, ip2, port2);
+    res.push_back(tracker1);
+    res.push_back(tracker2);
+
     remove(jsonfile.c_str());
-    return tracker;
+    return res;
 }
 
 int createUserDirectory(string userId){
@@ -1129,17 +1145,40 @@ int main(int n, char* argv[]){
     string ip, trackerInfoDest;
     int port;
     getArgDetails(ip, port, trackerInfoDest, argv);
-    tracker = getTrackerDetails(trackerInfoDest);
+    vector<Tracker> trackers = getTrackerDetails(trackerInfoDest);
+    tracker = trackers[0];
 
     //127.0.0.3:2022
     std::cout<<"[Tracker Used]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
+    std::cout<<"[Tracker 2]:    TrackerId=> "<<trackers[1].id<<" | IP=> "<<trackers[1].ip<<" | PORT=> "<<trackers[1].port<<"\n";
     std::cout<<"[Peer Client]:    IP=> "<<ip<<" | PORT=> "<<port<<"\n";
+
+    
+
+
+    int sockfd;
+    struct sockaddr_in servaddr;
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+        printf("socket creation for tracker live check failed...\n");
+        exit(0);
+    }
+    bzero(&servaddr, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    servaddr.sin_addr.s_addr = inet_addr(tracker.ip.c_str());
+    servaddr.sin_port = htons(tracker.port);
 
     thread serverThread(server, port);
     vector<thread> clientThreads;
     while(true){
         string req;
         getline(cin, req);
+        if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
+            cout<<"SWITCHING TO SECOND TRACKER\n";
+            tracker = trackers[1];
+            servaddr.sin_addr.s_addr = inet_addr(tracker.ip.c_str());
+            servaddr.sin_port = htons(tracker.port);
+        }
         if(req!="") clientThreads.emplace_back(client,req, ip, port);
     }
     for (thread &t : clientThreads) {
