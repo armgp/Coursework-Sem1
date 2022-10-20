@@ -14,6 +14,7 @@
 #include <unordered_map>
 #include <set>
 #include <fstream>
+#include <semaphore.h>
 #include "logger.h"
 
 using namespace std;
@@ -631,13 +632,24 @@ void processClientRequest(struct ThreadParams params){
             send(newSocketFd, "<USER ADDED AS SEEDER>", 23, 0);
         }
 
+        // stop_share <group_id> <file_name> <uid>
+        else if(command[0] == "stop_share"){
+            string gid = command[1];
+            string fileName = command[2];
+            string uid = command[3];
+            set<string>::iterator it = Groups[gid].shareableFiles[fileName].find(uid);
+            Groups[gid].shareableFiles[fileName].erase(it);
+            cout<<"<"<<uid<<" STOPPED SHARING>: FILENAME: "<<fileName<<" IN "<<"GROUP: "<<gid<<"\n";
+            send(newSocketFd, "<STOPPED SHARING>", 23, 0);
+        }
+
         else{
             if(request == "quit"){
                 cout<<"SHUTTING DOWN.. ";
             }
             else cout<<"INVALID COMMAND!!\n";
         }
-
+        
         close(newSocketFd);
 }
 
@@ -687,6 +699,7 @@ void server(int port, string ip){
 
     //take care of joining threads.
     vector<thread> clientReqThreads;
+
     while(status){
         int newSocketFd = accept(server.socket, address, &addressLen);
         struct ThreadParams params;
@@ -694,13 +707,12 @@ void server(int port, string ip){
         params.server = server;
         params.status = &status;  
         clientReqThreads.emplace_back(processClientRequest, params);
-        // thread clientReqHandleThread(processClientRequest, params);
-        // clientReqHandleThread.join();
     }
 
     for (thread &t : clientReqThreads) {
         t.join();
     }
+
     clientReqThreads.clear();
 }
 

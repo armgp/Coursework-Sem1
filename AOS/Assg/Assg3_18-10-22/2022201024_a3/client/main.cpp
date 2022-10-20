@@ -43,7 +43,7 @@ string userid = "";
 
 unordered_map<string, pair<vector<bool>, int>> fileToBitMap;
 unordered_map<string, string> fileLocMap; // fileName -> filePath
-unordered_map<string, char> downloadedFiles; //fileName -> D/C
+unordered_map<string, pair<string, char>> downloadedFiles; //fileName*gid -> D/C
 
 vector<string> createdDirectories;
 
@@ -1013,22 +1013,27 @@ void client(string req, string ip, int port) {
             destinationPath+=fileName;
             int fd = open(destinationPath.c_str(), O_CREAT|O_RDWR, 0666);
 
+            string fileGrpKey = "";
+            fileGrpKey+=fileName;
+            fileGrpKey+="*";
+            fileGrpKey+=command[1];
+
             //random chunk first and then rarest chunk first
             vector<thread> downloadChunkThreads;
             for(int i=m-1; i>=0; i--){
-                
                 //setup file details for the first chunk download
-                if(downloadedFiles.find(fileName) == downloadedFiles.end()) {
-                    downloadedFiles[fileName] = 'D';
+                if(downloadedFiles.find(fileGrpKey) == downloadedFiles.end()) {
+                    downloadedFiles[fileGrpKey].first = command[1];
+                    downloadedFiles[fileGrpKey].second = 'D';
                     char buf[PATH_MAX]; 
                     realpath(destinationPath.c_str(), buf);
                     fileLocMap[fileName] = string(buf);
-                    std::cout<<fileLocMap[fileName];
-                    // unordered_map<string, pair<vector<bool>, int>> fileToBitMap;
                     vector<bool> bmap(noOfChunks, false);
                     fileToBitMap[fileName] = make_pair(bmap, lastChunkVal);
-                 }
-        
+                }
+
+                if(downloadedFiles[fileGrpKey].second == 'C') break;
+
                 pair<int, int> p = chunkNoToNoOfSeeders[i];
                 int chunkNo = p.first;
                 
@@ -1044,15 +1049,6 @@ void client(string req, string ip, int port) {
                 if(chunkNo == noOfChunks-1) chunkSize = lastChunkVal;
 
                 downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, chunkNo, chunkSize, fd);
-                int n = downloadChunkThreads.size();
-                if(n==10){
-                    for(int i=0; i<n; i++){
-                        downloadChunkThreads[i].join();
-                    }
-                    for(int i=0; i<n; i++){
-                        downloadChunkThreads.pop_back();
-                    }
-                }
                 
                 if(i==m-1){
                     //download_file <group_id> <file_name> <destination_path>
@@ -1073,6 +1069,8 @@ void client(string req, string ip, int port) {
                     std::memset(res1, 0, 20000);
                 }
 
+                // usleep(1000000);
+
             }
 
             for (thread &t : downloadChunkThreads) {
@@ -1082,47 +1080,35 @@ void client(string req, string ip, int port) {
             
             downloadChunkThreads.clear();
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
-
-            //threads to download from seeders
-            // int noOfSeeders = userDetails.size();
-            // vector<string> bitMapInfo = divideStringByChar(userToBitMap[userDetails[0][0]], ' ');
-            // string bitMap = bitMapInfo[0];
-            // int noOfChunks = bitMap.size();
-            // vector<thread> downloadChunkThreads;
-
-            // destinationPath+="/";
-            // destinationPath+=fileName;
-            // int fd = open(destinationPath.c_str(), O_CREAT|O_RDWR, 0666);
-
-            // for(int i=0; i<noOfChunks; i++){
-            //     int seeder = i%noOfSeeders;
-            //     string seederIp = userDetails[seeder][1];
-            //     int seederPort = atoi(userDetails[seeder][2].c_str());
-            //     int chunkSize = 512*1024;
-            //     if(i == noOfChunks-1) chunkSize = atoi(bitMapInfo[1].c_str());
-            //     downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, i, chunkSize, fd);
-            // }
-
-            //  string downloadedFileSha1 = getChunkWiseSha(destinationPath);
-
-            //checing the entire sha1 again(not needed)
-            // struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-            // if(client1.socket == -1){
-            //     std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-            //     return;
-            // }
-            // string req1 = "getSha1 ";
-            // req1+=fileName;
-            // char* res1 = client1.request(&client1, tracker.ip, tracker.port, req1, downloadedFileSha1.size(), 1);
-            // string response1(res1);
-            // std::memset(res1, 0, downloadedFileSha1.size());
-            // if(response1.substr(0, downloadedFileSha1.size()) == downloadedFileSha1){
-            //     std::cout<<"SHA1 MATCHED\n";
-            // }else{
-            //     std::cout<<"FILE CORRUPTED!\n";
-            // }
+            downloadedFiles[fileGrpKey].second = 'C';
 
         }
+    }
+
+    //show_downloads
+    else if(command[0] == "show_downloads"){
+        //[D] [grp_id] filename
+        if(downloadedFiles.size() == 0){
+            cout<<"<NO DOWNLOADS YET>\n";
+        }else{
+            for(auto m : downloadedFiles){
+                std::cout<<"["<<m.second.second<<"]["<<m.second.first<<"] "<<divideStringByChar(m.first, '*')[0]<<"\n";
+            }
+        }
+    }
+
+    // stop_share <group_id> <file_name>
+    else if(command[0] == "stop_share"){
+        string req1 = req+" ";
+        req1+=userid;
+        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+        if(client.socket == -1){
+            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+            return;
+        }
+        char* res = client.request(&client, tracker.ip, tracker.port, req1, 20000, 0);
+        string response(res);
+        std::cout<<"**********["<<response<<"]**********\n";
     }
 
     else{
@@ -1150,14 +1136,17 @@ int main(int n, char* argv[]){
     std::cout<<"[Peer Client]:    IP=> "<<ip<<" | PORT=> "<<port<<"\n";
 
     thread serverThread(server, port);
-
+    vector<thread> clientThreads;
     while(true){
         string req;
         getline(cin, req);
-        if(req!="") client(req, ip, port);
+        if(req!="") clientThreads.emplace_back(client,req, ip, port);
     }
-
+    for (thread &t : clientThreads) {
+        t.join();
+    }
     serverThread.join();
+
 
     return 0;
 }
