@@ -621,23 +621,15 @@ void processClientRequest(struct ThreadParams params){
             send(newSocketFd, "CORRUPETD", 10, 0);
         }
 
-        //getuserdetails uid
-        // else if(command[0] == "getuserdetails"){
-        //     string uid = command[1];
-        //     string res = "";
-
-        //     if(UsersMap.find(uid) == UsersMap.end()){
-        //         cout<<"<ERROR>: USER NOT FOUND -> "<<uid<<"\n";
-        //         send(newSocketFd, "<USER NOT FOUND>", 17, 0);
-        //     }
-        //     else{
-        //         res+=UsersMap[uid].ip;
-        //         res+=" ";
-        //         res+=to_string(UsersMap[uid].port);
-        //         cout<<"<SEND>: USER DATA SUCCESFULLY FORWARDED\n";
-        //         send(newSocketFd, res.c_str(), res.size(), 0);
-        //     }
-        // }
+        //addSeeder <group_id> <fileName> <user_id>
+        else if(command[0] == "addSeeder"){
+            string gid = command[1];
+            string fileName = command[2];
+            string uid = command[3];
+            Groups[gid].shareableFiles[fileName].insert(uid);
+            cout<<"<NEW SEEDER ADDED>: FileName: "<<fileName<<"\n";
+            send(newSocketFd, "<USER ADDED AS SEEDER>", 23, 0);
+        }
 
         else{
             if(request == "quit"){

@@ -43,6 +43,7 @@ string userid = "";
 
 unordered_map<string, pair<vector<bool>, int>> fileToBitMap;
 unordered_map<string, string> fileLocMap; // fileName -> filePath
+unordered_map<string, char> downloadedFiles; //fileName -> D/C
 
 vector<string> createdDirectories;
 
@@ -562,6 +563,7 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
     if(status == "completed") std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" SUCCESSFULL>\n";
     else std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" INCOMPLETE>\n";
     
+    fileToBitMap[fileName].first[chunkNo] = true;
 }
 
 
@@ -1014,6 +1016,19 @@ void client(string req, string ip, int port) {
             //random chunk first and then rarest chunk first
             vector<thread> downloadChunkThreads;
             for(int i=m-1; i>=0; i--){
+                
+                //setup file details for the first chunk download
+                if(downloadedFiles.find(fileName) == downloadedFiles.end()) {
+                    downloadedFiles[fileName] = 'D';
+                    char buf[PATH_MAX]; 
+                    realpath(destinationPath.c_str(), buf);
+                    fileLocMap[fileName] = string(buf);
+                    std::cout<<fileLocMap[fileName];
+                    // unordered_map<string, pair<vector<bool>, int>> fileToBitMap;
+                    vector<bool> bmap(noOfChunks, false);
+                    fileToBitMap[fileName] = make_pair(bmap, lastChunkVal);
+                 }
+        
                 pair<int, int> p = chunkNoToNoOfSeeders[i];
                 int chunkNo = p.first;
                 
@@ -1027,6 +1042,7 @@ void client(string req, string ip, int port) {
                 int chunkSize = 512*1024;
 
                 if(chunkNo == noOfChunks-1) chunkSize = lastChunkVal;
+
                 downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, chunkNo, chunkSize, fd);
                 int n = downloadChunkThreads.size();
                 if(n==10){
@@ -1038,6 +1054,25 @@ void client(string req, string ip, int port) {
                     }
                 }
                 
+                if(i==m-1){
+                    //download_file <group_id> <file_name> <destination_path>
+                    string req1 = "addSeeder ";
+                    req1+=command[1];
+                    req1+= " ";
+                    req1+=command[2];
+                    req1+=" ";
+                    req1+=userid;
+                    struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+                    if(client1.socket == -1){
+                        std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                        return;
+                    }
+
+                    char* res1 = client1.request(&client1, tracker.ip, tracker.port, req1, 20000, 0);
+                    string response1(res1);
+                    std::memset(res1, 0, 20000);
+                }
+
             }
 
             for (thread &t : downloadChunkThreads) {
