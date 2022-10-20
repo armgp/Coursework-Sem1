@@ -444,8 +444,8 @@ void peerThreadCodeForOnePeer(string peer1, string fileName, int port, string de
                 downloadFileReq+=" ";
                 downloadFileReq+=to_string(i);
                 struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
-                if(client2.socket == -1){
-                    std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                if(client3.socket == -1){
+                    std::cout<<"!! ERROR - SOCKET CREATION FAILED HERE !!\n";
                     return;
                 }
 
@@ -532,7 +532,7 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
     downloadFileReq+=to_string(chunkNo);
     struct Client client3 = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
     if(client3.socket == -1){
-        std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+        std::cout<<"!! ERROR - SOCKET CREATION FAILED HERE@!!\n";
         return;
     }
 
@@ -1153,16 +1153,8 @@ int main(int n, char* argv[]){
     std::cout<<"[Tracker 2]:    TrackerId=> "<<trackers[1].id<<" | IP=> "<<trackers[1].ip<<" | PORT=> "<<trackers[1].port<<"\n";
     std::cout<<"[Peer Client]:    IP=> "<<ip<<" | PORT=> "<<port<<"\n";
 
-    
-
-
-    int sockfd;
     struct sockaddr_in servaddr;
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
-    if (sockfd == -1) {
-        printf("socket creation for tracker live check failed...\n");
-        exit(0);
-    }
+    
     bzero(&servaddr, sizeof(servaddr));
     servaddr.sin_family = AF_INET;
     servaddr.sin_addr.s_addr = inet_addr(tracker.ip.c_str());
@@ -1171,14 +1163,22 @@ int main(int n, char* argv[]){
     thread serverThread(server, port);
     vector<thread> clientThreads;
     while(true){
+        int sockfd;
         string req;
         getline(cin, req);
+        sockfd = socket(AF_INET, SOCK_STREAM, 0);
+        if (sockfd == -1) {
+            printf("socket creation for tracker live check failed...\n");
+            exit(0);
+        }
         if (connect(sockfd, (struct sockaddr*)&servaddr, sizeof(servaddr)) != 0) {
             cout<<"SWITCHING TO SECOND TRACKER\n";
             tracker = trackers[1];
             servaddr.sin_addr.s_addr = inet_addr(tracker.ip.c_str());
             servaddr.sin_port = htons(tracker.port);
         }
+        close(sockfd);
+
         if(req!="") clientThreads.emplace_back(client,req, ip, port);
     }
     for (thread &t : clientThreads) {
