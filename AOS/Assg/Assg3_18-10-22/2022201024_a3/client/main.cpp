@@ -450,8 +450,6 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
 
-    //    string response =  "SHA1 VERIFIED";
-
         if(response == "SHA1 VERIFIED"){
             std::cout<<"CHUNK NO: "<<chunkNo<<" -> "<<response<<"\n";
             pwrite(fd, res3, currChunkSize, chunkNo*1024*512);
@@ -735,7 +733,9 @@ void client(string req, string ip, int port) {
             return;
         }
         string buffer(buf);
+        string fileName = getFileName(buffer);
         string sha1 = getChunkWiseSha(buffer);
+        int noOfChunks = (int)(sha1.size())/40;
 
         req="";
         req+=command[0];
@@ -745,8 +745,6 @@ void client(string req, string ip, int port) {
         req+=command[2];
         req+=" ";
         req+=userid;
-        req+=" ";
-        req+=sha1;
 
         struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
         if(client.socket == -1){
@@ -756,7 +754,32 @@ void client(string req, string ip, int port) {
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
         std::cout<<"**********["<<response<<"]**********\n";
-        if(response == "<UPLOADED FILE>"){
+
+        if(response == "<WAITING FOR SHA1 UPLOADS>"){
+            for(int i=0; i<noOfChunks; i++){
+                string chunkSha = sha1.substr(i*40, 40);
+                string req1 = "uploadChunkSha ";
+                req1+=fileName;
+                req1+=" ";
+                req1+=to_string(i);
+                req1+=" ";
+                req1+=to_string(noOfChunks);
+                req1+=" ";
+                req1+=chunkSha;
+                struct Client client1 = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+                if(client1.socket == -1){
+                    std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                    return;
+                }
+                char* res1 = client1.request(&client1, tracker.ip, tracker.port, req1, 20000, 0);
+                string response1(res1);
+                response = response1;
+                close(client1.socket);
+            }
+        }
+
+        if(response == "<SHA1 UPLOAD COMPLETED>" || response == "<SHA1 ALREADY PRESENT>"){
+            cout<<"IMHERE\n";
             string fileName = getFileName(buffer);
 
             FILE * pFile;
@@ -784,7 +807,9 @@ void client(string req, string ip, int port) {
             fileToBitMap[fileName] = make_pair(bitMap, lastChunkSize);
 
             fileLocMap[fileName] = buffer;
+            cout<<"IMOUT\n";
         }
+
         close(client.socket);
     }
 

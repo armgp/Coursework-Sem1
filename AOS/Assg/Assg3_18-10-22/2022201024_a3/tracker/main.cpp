@@ -481,9 +481,9 @@ void processClientRequest(struct ThreadParams params){
             }
         }
 
-        //upload_file <file_path> <group_id> <user_id> <sha1>
+        //upload_file <file_path> <group_id> <user_id> 
         else if(command[0] == "upload_file"){
-            if(command.size() != 5){
+            if(command.size() != 4){
                 cout<<"<LOGIN TO UPLOAD FILES>\n";
                 send(newSocketFd, "<LOGIN TO UPLOAD FILES>", 24, 0);
             }
@@ -492,7 +492,6 @@ void processClientRequest(struct ThreadParams params){
                 string filePath = command[1];
                 string groupId = command[2];
                 string userId = command[3];
-                string sha1 = command[4];
 
                 if(Groups.find(groupId) == Groups.end()){
                     cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
@@ -505,22 +504,47 @@ void processClientRequest(struct ThreadParams params){
                 }
 
                 else{
+                    string fileName = getFileName(filePath);
                     if(Groups[groupId].userIds.find(userId) == Groups[groupId].userIds.end()){
                         cout<<"<ERROR>: USER "<<userId<<" IS NOT A PART OF THE GROUP "<<groupId<<"\n";
                         send(newSocketFd, "<USER NOT PART OF THE GROUP>", 29, 0);
-                    }else{
-                        string fileName = getFileName(filePath);
+                    }
+
+                    else if(fileNameToSha1Map.find(fileName) != fileNameToSha1Map.end()){
+                        Groups[groupId].shareableFiles[fileName].insert(userId);
+                        fileNameToSha1Map[fileName] = "";
+                        UsersMap[userId].files.insert(fileName);
+                        cout<<"<UPLOADED>\n";
+                        send(newSocketFd, "<SHA1 ALREADY PRESENT>", 23, 0);
+                    }
+
+                    else{
                         //filename-> <vector>userids
                         Groups[groupId].shareableFiles[fileName].insert(userId);
-                        fileNameToSha1Map[fileName] = sha1;
+                        fileNameToSha1Map[fileName] = "";
                         UsersMap[userId].files.insert(fileName);
 
-                        cout<<"<UPLOADED>\n";
-                        send(newSocketFd, "<UPLOADED FILE>", 16, 0);
+                        cout<<"<WAITING FOR SHA1 UPLOADS>\n";
+                        send(newSocketFd, "<WAITING FOR SHA1 UPLOADS>", 27, 0);
                     }
                 }
             }
 
+        }
+
+        //uploadChunkSha <filename> <chunkNo> <noOfChunks> <chunksha1>
+        else if(command[0] == "uploadChunkSha"){
+            cout<<request<<"\n";
+            string fileName = command[1];
+            string chunkNo = command[2];
+            int cno = atoi(chunkNo.c_str());
+            int noOfChunks = atoi(command[3].c_str());
+            string chunkSha1 = command[4];
+            fileNameToSha1Map[fileName]+=chunkSha1;
+            if(cno == noOfChunks-1){
+                send(newSocketFd, "<SHA1 UPLOAD COMPLETED>", 24, 0);
+            }
+            else send(newSocketFd, "<NEXT>", 7, 0);
         }
 
         //list_files <group_id>
@@ -772,6 +796,7 @@ void client(string req, string ip, int port) {
     }
     //send request to tracker server(listening at tracer.port)
     client.request(&client, ip, tracker.port, req);
+    close(client.socket);
 }
 
 /* main function */
