@@ -512,7 +512,6 @@ void processClientRequest(struct ThreadParams params){
 
                     else if(fileNameToSha1Map.find(fileName) != fileNameToSha1Map.end()){
                         Groups[groupId].shareableFiles[fileName].insert(userId);
-                        fileNameToSha1Map[fileName] = "";
                         UsersMap[userId].files.insert(fileName);
                         cout<<"<UPLOADED>\n";
                         send(newSocketFd, "<SHA1 ALREADY PRESENT>", 23, 0);
@@ -534,7 +533,6 @@ void processClientRequest(struct ThreadParams params){
 
         //uploadChunkSha <filename> <chunkNo> <noOfChunks> <chunksha1>
         else if(command[0] == "uploadChunkSha"){
-            cout<<request<<"\n";
             string fileName = command[1];
             string chunkNo = command[2];
             int cno = atoi(chunkNo.c_str());
@@ -628,22 +626,36 @@ void processClientRequest(struct ThreadParams params){
         else if(command[0] == "getSha1"){
             string fileName = command[1];
             string sha1 = fileNameToSha1Map[fileName];
-            send(newSocketFd, sha1.c_str(), sha1.size(), 0);
+            int sz = sha1.size();
+            // send(newSocketFd, sha1.c_str(), sha1.size(), 0);
+            
+            int sendBytes = 0;
+            int totalBytesSent = 0;
+            while(totalBytesSent!=sz){
+                cout<<totalBytesSent<<" out of "<<sz<<"\n";
+                sendBytes = send(newSocketFd, sha1.c_str()+totalBytesSent, sha1.size(), 0);
+                totalBytesSent+=sendBytes;
+            }
         }
-
+        
         //getSha1 <fileName> <chunkNo> <sha1>
         else if(command[0] == "checkSha1chunk"){
             string fileName = command[1];
             int chunkNo = atoi(command[2].c_str());
             string sha1Recv = command[3];
+            cout<<chunkNo<<" ";
             string sha1Data = fileNameToSha1Map[fileName].substr(chunkNo*40, 40);
+            cout<<sha1Data<<"\n";
          
             if(sha1Data == sha1Recv){
-                send(newSocketFd, "SHA1 VERIFIED", 14, 0);
+                write(newSocketFd, "SHA1 VERIFIED", 14);
                 return;
             }
 
-            send(newSocketFd, "CORRUPETD", 10, 0);
+            else{
+                cout<<sha1Recv<<"\n"<<sha1Data<<"\n"<<"corrupted\n";
+                write(newSocketFd, "CORRUPETD", 10);
+            }
         }
 
         //addSeeder <group_id> <fileName> <user_id>
@@ -671,7 +683,7 @@ void processClientRequest(struct ThreadParams params){
             if(request == "quit"){
                 cout<<"SHUTTING DOWN.. ";
             }
-            else cout<<"INVALID COMMAND!!\n";
+            // else cout<<"INVALID COMMAND!! -> "<<request<<"\n";
         }
         
         close(newSocketFd);
@@ -734,7 +746,7 @@ void server(int port, string ip){
     }
 
     for (thread &t : clientReqThreads) {
-        t.join();
+        if(t.joinable())t.join();
     }
 
     clientReqThreads.clear();
@@ -813,8 +825,8 @@ int main(int n, char* argv[]){
     while(true){
         string req;
         getline(cin, req);
-        if(req!="") client(req, tracker.ip, 2021);
         if(req == "quit") {
+            client(req, tracker.ip, 2021);
             break; 
         }
     }

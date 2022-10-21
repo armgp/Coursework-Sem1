@@ -47,6 +47,8 @@ unordered_map<string, pair<string, char>> downloadedFiles; //fileName*gid -> D/C
 
 vector<string> createdDirectories;
 
+unordered_map<string, string> dynamicDownloadsShaMap;
+
 /* utils */
 vector<string> divideStringByChar(string s, char c){
     int n = s.size();
@@ -424,6 +426,7 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
 
     string status = "incomplete";
     int count = 0;
+    struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
     while(status == "incomplete"){
         char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
         string response3(res3);
@@ -434,39 +437,24 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
         }
 
         string currChunkSha1 = getShaOfString(response3);
-        string req = "checkSha1chunk ";
-        req+=fileName;
-        req+=" ";
-        req+=to_string(chunkNo);
-        req+=" ";
-        req+=currChunkSha1;
-        
-        struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
-        if(client.socket == -1){
-            std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-            return;
-        }
+        string shaReceived = dynamicDownloadsShaMap[fileName].substr(chunkNo*40, 40);
 
-        char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
-        string response(res);
-
-        if(response == "SHA1 VERIFIED"){
-            std::cout<<"CHUNK NO: "<<chunkNo<<" -> "<<response<<"\n";
+        if(currChunkSha1 == shaReceived){
             pwrite(fd, res3, currChunkSize, chunkNo*1024*512);
             status = "completed";
         }else count++;
 
-        if(count >= 7) status = "interrupted";
+        if(count >= 7) {
+            status = "interrupted";
+        }
 
         memset(res3, 0, currChunkSize);
-        memset(res, 0, 20000);
-        close(client.socket);
+        
     }
+    close(client.socket);
     close(client3.socket);
 
-    if(status == "completed") std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" SUCCESSFULL>\n";
-    else std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" INCOMPLETE>\n";
-    
+    if(status != "completed") std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" INCOMPLETE>\n";
     fileToBitMap[fileName].first[chunkNo] = true;
 }
 
@@ -753,7 +741,9 @@ void client(string req, string ip, int port) {
         }
         char* res = client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
         string response(res);
-        std::cout<<"**********["<<response<<"]**********\n";
+        if(response == "<SHA1 ALREADY PRESENT>" || response == "<WAITING FOR SHA1 UPLOADS>"){
+            std::cout<<"**********[<UPLOADED>]**********\n";
+        }
 
         if(response == "<WAITING FOR SHA1 UPLOADS>"){
             for(int i=0; i<noOfChunks; i++){
@@ -779,7 +769,7 @@ void client(string req, string ip, int port) {
         }
 
         if(response == "<SHA1 UPLOAD COMPLETED>" || response == "<SHA1 ALREADY PRESENT>"){
-            cout<<"IMHERE\n";
+            cout<<response<<"\n";
             string fileName = getFileName(buffer);
 
             FILE * pFile;
@@ -807,7 +797,6 @@ void client(string req, string ip, int port) {
             fileToBitMap[fileName] = make_pair(bitMap, lastChunkSize);
 
             fileLocMap[fileName] = buffer;
-            cout<<"IMOUT\n";
         }
 
         close(client.socket);
@@ -917,8 +906,27 @@ void client(string req, string ip, int port) {
                 if(lastChunkVal==0) lastChunkVal=atoi(vals[1].c_str());
             }
 
-            //chunkNo, noOfSeeders
+            //get whole sha1 of file
             int noOfChunks = bitMap.size();
+            string getShaReq = "getSha1 ";
+            getShaReq+=fileName;
+            int noOfBytes = noOfChunks*40;
+
+            struct Client clientsh = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+            if(clientsh.socket == -1){
+                std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+                return;
+            }
+            char* entireSha1 = clientsh.request(&clientsh, tracker.ip, tracker.port, getShaReq, noOfBytes, 1);
+            string fullsha1(entireSha1);
+            std::memset(entireSha1, 0, noOfBytes);
+            dynamicDownloadsShaMap[fileName] = fullsha1;
+            close(clientsh.socket);
+
+            cout<<dynamicDownloadsShaMap[fileName].size()<<"\n";
+
+            //chunkNo, noOfSeeders
+            
             vector<pair<int, int>> chunkNoToNoOfSeeders(noOfChunks, make_pair(0, 0));
             unordered_map<int, vector<string>> chunkNoToSeeders;
             int firstChunkNo = -1;
@@ -935,7 +943,6 @@ void client(string req, string ip, int port) {
                     }
                 }
             }
-
             int m = chunkNoToNoOfSeeders.size();
             pair<int, int> lastEle = chunkNoToNoOfSeeders[m-1];
             pair<int, int> randomFirst = chunkNoToNoOfSeeders[firstChunkNo];
@@ -943,7 +950,7 @@ void client(string req, string ip, int port) {
             chunkNoToNoOfSeeders[m-1] = randomFirst;
             chunkNoToNoOfSeeders.pop_back();
 
-            sort(chunkNoToNoOfSeeders.begin(), chunkNoToNoOfSeeders.end(), [](pair<int, int>& a, pair<int, int>& b){
+            std::sort(chunkNoToNoOfSeeders.begin(), chunkNoToNoOfSeeders.end(), [](pair<int, int>& a, pair<int, int>& b){
                 return a.second > b.second;
             });
             //prioritizing random chunk first
@@ -989,6 +996,7 @@ void client(string req, string ip, int port) {
                 if(chunkNo == noOfChunks-1) chunkSize = lastChunkVal;
 
                 downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, chunkNo, chunkSize, fd);
+                // downloadChunkFromPeer(fileName, seederIp, seederPort, chunkNo, chunkSize, fd);
                 
                 if(i==m-1){
                     //download_file <group_id> <file_name> <destination_path>
@@ -1021,6 +1029,7 @@ void client(string req, string ip, int port) {
             downloadChunkThreads.clear();
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
             downloadedFiles[fileGrpKey].second = 'C';
+            dynamicDownloadsShaMap.erase(dynamicDownloadsShaMap.find(fileName));
 
         }
         close(client.socket);
@@ -1106,10 +1115,10 @@ int main(int n, char* argv[]){
         }
         close(sockfd);
 
-        if(req!="") clientThreads.emplace_back(client,req, ip, port);
+        if(req!="" && req!="\n" && req!=" ") clientThreads.emplace_back(client,req, ip, port);
     }
     for (thread &t : clientThreads) {
-        t.join();
+         t.join();
     }
     serverThread.join();
 
