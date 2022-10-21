@@ -683,7 +683,7 @@ void processClientRequest(struct ThreadParams params){
             if(request == "quit"){
                 cout<<"SHUTTING DOWN.. ";
             }
-            // else cout<<"INVALID COMMAND!! -> "<<request<<"\n";
+            else cout<<"INVALID COMMAND!! -> "<<request<<"\n";
         }
         
         close(newSocketFd);
@@ -806,8 +806,7 @@ void client(string req, string ip, int port) {
         cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
         return;
     }
-    //send request to tracker server(listening at tracer.port)
-    client.request(&client, ip, tracker.port, req);
+    client.request(&client, tracker.ip, tracker.port, req);
     close(client.socket);
 }
 
@@ -825,9 +824,9 @@ int main(int n, char* argv[]){
     while(true){
         string req;
         getline(cin, req);
-        if(req == "quit") {
-            client(req, tracker.ip, 2021);
-            break; 
+        if(req != "") {
+            client(req, tracker.ip, tracker.port);
+            if(req=="quit") exit(0);
         }
     }
 

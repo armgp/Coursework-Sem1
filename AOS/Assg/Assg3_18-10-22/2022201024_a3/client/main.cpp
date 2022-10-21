@@ -457,7 +457,6 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
     fileToBitMap[fileName].first[chunkNo] = true;
 }
 
-
 void client(string req, string ip, int port) {
 
     vector<string> command = divideStringByChar(req, ' ');
@@ -1028,7 +1027,7 @@ void client(string req, string ip, int port) {
             }
             close(fd);
             downloadChunkThreads.clear();
-            
+
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
             downloadedFiles[fileGrpKey].second = 'C';
             dynamicDownloadsShaMap.erase(dynamicDownloadsShaMap.find(fileName));
