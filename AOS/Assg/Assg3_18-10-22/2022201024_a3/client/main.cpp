@@ -290,7 +290,6 @@ void server(int port){
             string stringBitmap = convertBitMapToString(bitMap);
 
             std::cout<<"<BITMAP SEND>\n";
-            std::cout<<stringBitmap<<"\n\n";
             send(newSocketFd, stringBitmap.c_str(), stringBitmap.size(), 0);
         }
 
@@ -899,7 +898,6 @@ void client(string req, string ip, int port) {
             string bitMap="";
             int lastChunkVal=0;
             for(auto ub : userToBitMap){
-                cout<<ub.first<<"--> "<<ub.second<<"\n";
                 vector<string> vals = divideStringByChar(ub.second, ' ');
                 userToStringBitMapAndLchunkSize[ub.first] = make_pair(vals[0], atoi(vals[1].c_str()));
                 if(bitMap=="") bitMap = vals[0];
@@ -997,7 +995,11 @@ void client(string req, string ip, int port) {
 
                 downloadChunkThreads.emplace_back(downloadChunkFromPeer, fileName, seederIp, seederPort, chunkNo, chunkSize, fd);
                 // downloadChunkFromPeer(fileName, seederIp, seederPort, chunkNo, chunkSize, fd);
-                
+                if(downloadChunkThreads.size() == 10){
+                    for(int i=0; i<10; i++) downloadChunkThreads[i].join();
+                    downloadChunkThreads.clear();
+                }
+
                 if(i==m-1){
                     //download_file <group_id> <file_name> <destination_path>
                     string req1 = "addSeeder ";
@@ -1025,8 +1027,8 @@ void client(string req, string ip, int port) {
                 t.join();
             }
             close(fd);
-            
             downloadChunkThreads.clear();
+            
             std::cout<<"FILE COMPLETELY DOWNLOADED SUCCESSFULLY\n";
             downloadedFiles[fileGrpKey].second = 'C';
             dynamicDownloadsShaMap.erase(dynamicDownloadsShaMap.find(fileName));
