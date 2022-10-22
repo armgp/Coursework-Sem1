@@ -32,7 +32,8 @@ public:
         ip = _ip;
         port = _port;
     }
-} tracker;
+} tracker, tracker2;
+int trackerNo;
 
 class User {
 public:
@@ -170,7 +171,7 @@ struct Client {
     int port;
     u_long interface;
 
-    char* (*request)(struct Client *client, string serverIp, int port, string req);
+    char* (*request)(struct Client *client, string serverIp, int port, string req, int resSize, int flag);
 };
 
 struct ThreadParams {
@@ -178,6 +179,86 @@ struct ThreadParams {
     struct Server server;
     bool* status;
 };
+
+/* client code */
+char* request(struct Client *client, string serverIp, int port, string req, int resSize, int flag){
+
+        char* res = (char*)malloc(resSize);
+
+        struct sockaddr_in serverAddress;
+        serverAddress.sin_family = client->domain;
+        serverAddress.sin_port = htons(port);
+        serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
+
+        inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
+        if(connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1){
+            if(req[0] == 't' && req[1] == '_') std::cout<<"TRACKER2 NOT ONLINE\n";
+            else std::cout<<"!! ERROR - CANNOT CONNECT SOCKET TO HOST !!\n";
+            return res;
+        }
+
+        if(send(client->socket, req.c_str(), req.size(), 0) == -1){
+            std::cout<<"!! ERROR - SENDING FROM REQ BUFFER TO CLIENT SOCKET FAILED !!\n";
+            return res;
+        }
+
+        if(flag == 0){
+            if(read(client->socket, res, resSize) == -1){
+                std::cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
+                return res;
+            }
+
+            return res;
+        }
+
+        //flag == 1 (compulsorily return resSize buffer)
+        int totalSize = 0;
+        char* res2 = (char*)malloc(resSize);
+        int ind = 0;
+        while(totalSize != resSize){
+            int currReadSize = read(client->socket, res, resSize);
+            totalSize+=currReadSize;
+            for(int i=0; (ind<ind+currReadSize && i<currReadSize); i++,ind++){
+                res2[ind] = res[i];
+            }
+            std::memset(res, 0, resSize);
+        }
+        return res2;
+}
+
+struct Client clientConstructor(int domain, int type, int protocol, int port, u_long interface){
+    struct Client client;
+    client.domain = domain;
+    client.port = port;
+    client.interface = interface;
+
+    client.socket = socket(domain, type, protocol);
+    client.request = request;
+    return client;
+}
+
+void client(string req, string ip, int port) {
+    struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
+    if(client.socket == -1){
+        cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+        return;
+    }
+    client.request(&client, tracker.ip, tracker.port, req, 20000, 0);
+    close(client.socket);
+}
+
+void syncCommand(string request){
+    string tRequest = "t_"+request;
+    struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, tracker2.port, INADDR_ANY);
+    if(client.socket == -1){
+        std::cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
+        return;
+    }
+    char* res = client.request(&client, tracker2.ip, tracker2.port, tRequest, 20000, 0);
+    string response(res);
+    cout<<response<<"\n";
+    close(client.socket);
+}
 
 void processClientRequest(struct ThreadParams params){
 
@@ -216,11 +297,27 @@ void processClientRequest(struct ThreadParams params){
                     UsersMap[userId] = user;
                     send(newSocketFd, "<CREATED USER>", 15, 0);
                     cout<<"<CREATED> User:"<<userId<<"\n";
+
+                    if(trackerNo == 1){
+                        syncCommand(request);
+                    }
                 }
                 else{
                     send(newSocketFd, "<CREATE USER FAILED - USERID ALREADY EXISTS>", 45, 0);
                     cout<<"<CREATE USER FAILED>: User-Id already exists!\n";
                 }
+            }
+        }
+
+        // t_create_user <user_id> <password> 
+        else if(command[0] == "t_create_user"){
+            if(trackerNo == 2){
+                string userId = command[1];
+                string password = command[2];
+                User user(userId, password);
+                UsersMap[userId] = user;
+                cout<<"<CREATED> User:"<<userId<<"\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }
         }
 
@@ -240,6 +337,10 @@ void processClientRequest(struct ThreadParams params){
                 UsersMap[userId].port = stoi(peerPort);
                 cout<<"<LOGGED IN AS>: "<<userId<<"\n";
                 send(newSocketFd, "<LOGGED IN>", 12, 0);
+
+                if(trackerNo == 1){
+                    syncCommand(request);
+                }
             }
             
             else if(UsersMap.find(userId) != UsersMap.end() && UsersMap[userId].live == true){
@@ -252,7 +353,22 @@ void processClientRequest(struct ThreadParams params){
                 send(newSocketFd, "<INVALID CREDENTIALS>", 22, 0);
             }
         }
-        
+
+        //t_login <user_id> <password> <peer_port> <peer_ip>
+        else if(command[0] == "t_login"){
+            if(trackerNo == 2){
+                string userId = command[1];
+                string password = command[2];
+                string peerPort = command[3];
+                string peerIp = command[4];
+                UsersMap[userId].live = true;
+                UsersMap[userId].ip = peerIp;
+                UsersMap[userId].port = stoi(peerPort);
+                cout<<"<LOGGED IN AS>: "<<userId<<"\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
+            }
+        }
+
         //logout <user_id>
         else if(command[0] == "logout"){
             string userid = command[1];
@@ -267,6 +383,21 @@ void processClientRequest(struct ThreadParams params){
                 UsersMap[userid].port = 0;
                 cout<<"<"<<userid<<" LOGGED OUT>\n";
                 send(newSocketFd, "<LOGGED OUT>", 21, 0);
+                if(trackerNo == 1){
+                    syncCommand(request);
+                }
+            }
+        }
+
+        //t_logout <userid>
+        else if(command[0] == "t_logout"){
+            if(trackerNo == 2){
+                string userid = command[1];
+                UsersMap[userid].live = false;
+                UsersMap[userid].ip = "";
+                UsersMap[userid].port = 0;
+                cout<<"<"<<userid<<" LOGGED OUT>\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }
         }
 
@@ -286,11 +417,30 @@ void processClientRequest(struct ThreadParams params){
                     send(newSocketFd, "<CREATED GROUP>", 16, 0);
                     cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
                     UsersMap[userid].addToAdminedGroups(groupid);
+
+                    if(trackerNo == 1){
+                        syncCommand(request);
+                    }
                 }
                 else{
                     send(newSocketFd, "<CREATE GROUP FAILED - GROUPID ALREADY EXISTS>", 47, 0);
-                    cout<<"<CREATE GROUPFAILED>: Group-Id already exists!\n";
+                    cout<<"<CREATE GROUP FAILED>: Group-Id already exists!\n";
                 }
+            }
+        }
+
+        //t_create_group <group_id> <user_id>
+        else if(command[0] == "t_create_group"){
+            if(trackerNo == 2){
+                string groupid = command[1];
+                string userid = command[2];
+                Group newGroup;
+                newGroup.userIds.insert(userid);
+                newGroup.adminUserId = userid;
+                Groups[groupid] = newGroup;
+                UsersMap[userid].addToAdminedGroups(groupid);
+                cout<<"<CREATED> Group: "<<groupid<<" - ADMIN: "<<userid<<"\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }
         }
 
@@ -353,8 +503,23 @@ void processClientRequest(struct ThreadParams params){
                         Groups[groupId].pendingRequests.insert(userId);
                         send(newSocketFd, "<REQUEST SEND>", 15, 0);
                         cout<<"<REQUEST SENT>\n";
+
+                        if(trackerNo == 1){
+                            syncCommand(request);
+                        }
                     }
                 }
+            }
+        }
+
+        //t_join_group <group_id> <user_id>
+        else if(command[0] == "t_join_group"){
+            if(trackerNo == 2){
+                string groupId = command[1];
+                string userId = command[2];
+                Groups[groupId].pendingRequests.insert(userId);
+                cout<<"<REQUEST SENT>\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }
         }
 
@@ -390,10 +555,26 @@ void processClientRequest(struct ThreadParams params){
                             Groups[groupId].userIds.erase(pos);
                             send(newSocketFd, "<LEFT GROUP>", 35, 0);
                             cout<<"<LEFT> USER: "<<userId<<" - LEFT THE GROUP\n";
+
+                            if(trackerNo == 1){
+                                syncCommand(request);
+                            }
                         }
                         
                     }
                 }
+            }
+        }
+
+        //t_leave_group <group_id> <user_id>
+        else if(command[0] == "t_leave_group"){
+            if(trackerNo == 2){
+                string groupId = command[1];
+                string userId = command[2];
+                auto pos = Groups[groupId].userIds.find(userId);
+                Groups[groupId].userIds.erase(pos);
+                cout<<"<LEFT> USER: "<<userId<<" - LEFT THE GROUP\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }
         }
 
@@ -470,6 +651,10 @@ void processClientRequest(struct ThreadParams params){
                             Groups[groupId].pendingRequests.erase(pos);
                             cout<<"<ACCEPTED>: "<<userId<<"\n";
                             send(newSocketFd, "<USER IS ACCEPTED TO THE GROUP>", 32, 0);
+
+                            if(trackerNo == 1){
+                                syncCommand(request);
+                            }
                         }
 
                         else{
@@ -478,6 +663,20 @@ void processClientRequest(struct ThreadParams params){
                         }
                     }
                 }
+            }
+        }
+
+        //t_accept_request <group_id> <user_id> <admin_user_id>
+        else if(command[0] == "t_accept_request"){
+            if(trackerNo == 2){
+                string groupId = command[1];
+                string userId = command[2];
+                string admin = command[3];
+                auto pos = Groups[groupId].pendingRequests.find(userId);
+                Groups[groupId].userIds.insert(userId);
+                Groups[groupId].pendingRequests.erase(pos);
+                cout<<"<ACCEPTED>: "<<userId<<"\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }
         }
 
@@ -515,6 +714,11 @@ void processClientRequest(struct ThreadParams params){
                         UsersMap[userId].files.insert(fileName);
                         cout<<"<UPLOADED>\n";
                         send(newSocketFd, "<SHA1 ALREADY PRESENT>", 23, 0);
+
+                        if(trackerNo == 1){
+                            string req = "1"+request;
+                            syncCommand(req);
+                        }
                     }
 
                     else{
@@ -525,10 +729,44 @@ void processClientRequest(struct ThreadParams params){
 
                         cout<<"<WAITING FOR SHA1 UPLOADS>\n";
                         send(newSocketFd, "<WAITING FOR SHA1 UPLOADS>", 27, 0);
+
+                        if(trackerNo == 1){
+                            string req = "2"+request;
+                            syncCommand(req);
+                        }
                     }
                 }
             }
 
+        }
+
+        //t_1upload_file <file_path> <group_id> <user_id> 
+        else if(command[0] == "t_1upload_file"){
+            if(trackerNo == 2){
+                string filePath = command[1];
+                string groupId = command[2];
+                string userId = command[3];
+                string fileName = getFileName(filePath);
+                Groups[groupId].shareableFiles[fileName].insert(userId);
+                UsersMap[userId].files.insert(fileName);
+                cout<<"<UPLOADED>\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
+            }
+        }
+
+        //t_2upload_file <file_path> <group_id> <user_id> 
+        else if(command[0] == "t_2upload_file"){
+            if(trackerNo == 2){
+                string filePath = command[1];
+                string groupId = command[2];
+                string userId = command[3];
+                string fileName = getFileName(filePath);
+                Groups[groupId].shareableFiles[fileName].insert(userId);
+                fileNameToSha1Map[fileName] = "";
+                UsersMap[userId].files.insert(fileName);
+                cout<<"<WAITING FOR SHA1 UPLOADS>\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
+            }
         }
 
         //uploadChunkSha <filename> <chunkNo> <noOfChunks> <chunksha1>
@@ -543,6 +781,23 @@ void processClientRequest(struct ThreadParams params){
                 send(newSocketFd, "<SHA1 UPLOAD COMPLETED>", 24, 0);
             }
             else send(newSocketFd, "<NEXT>", 7, 0);
+
+            if(trackerNo == 1){
+                syncCommand(request);
+            }
+        }
+
+        //t_uploadChunkSha <filename> <chunkNo> <noOfChunks> <chunksha1>
+        else if(command[0] == "t_uploadChunkSha"){
+            if(trackerNo == 2){
+                string fileName = command[1];
+                string chunkNo = command[2];
+                int cno = atoi(chunkNo.c_str());
+                int noOfChunks = atoi(command[3].c_str());
+                string chunkSha1 = command[4];
+                fileNameToSha1Map[fileName]+=chunkSha1;
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
+            }
         }
 
         //list_files <group_id>
@@ -666,24 +921,69 @@ void processClientRequest(struct ThreadParams params){
             Groups[gid].shareableFiles[fileName].insert(uid);
             cout<<"<NEW SEEDER ADDED>: FileName: "<<fileName<<"\n";
             send(newSocketFd, "<USER ADDED AS SEEDER>", 23, 0);
+
+            if(trackerNo == 1){
+                syncCommand(request);
+            }
         }
 
-        // stop_share <group_id> <file_name> <uid>
+        //t_addSeeder <group_id> <fileName> <user_id>
+        else if(command[0] == "t_addSeeder"){
+            if(trackerNo == 2){
+                string gid = command[1];
+                string fileName = command[2];
+                string uid = command[3];
+                Groups[gid].shareableFiles[fileName].insert(uid);
+                cout<<"<NEW SEEDER ADDED>: FileName: "<<fileName<<"\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
+            }
+        }
+
+        //stop_share <group_id> <file_name> <uid>
         else if(command[0] == "stop_share"){
             string gid = command[1];
             string fileName = command[2];
             string uid = command[3];
-            set<string>::iterator it = Groups[gid].shareableFiles[fileName].find(uid);
-            Groups[gid].shareableFiles[fileName].erase(it);
-            cout<<"<"<<uid<<" STOPPED SHARING>: FILENAME: "<<fileName<<" IN "<<"GROUP: "<<gid<<"\n";
-            send(newSocketFd, "<STOPPED SHARING>", 23, 0);
+
+            if(Groups.find(gid) == Groups.end()){
+                cout<<"<ERROR>: GROUP DOESN'T EXIST\n";
+                send(newSocketFd, "<GROUP DOESN'T EXIST>", 22, 0);
+            }
+            
+            else if(Groups[gid].shareableFiles.find(fileName) == Groups[gid].shareableFiles.end()){
+                cout<<"<ERROR>: FILE DOESN'T EXIST\n";
+                send(newSocketFd, "<FILE DOESN'T EXIST>", 21, 0);
+            }
+            
+            else{
+                set<string>::iterator it = Groups[gid].shareableFiles[fileName].find(uid);
+                if(it == Groups[gid].shareableFiles[fileName].end()){
+                    send(newSocketFd, "<USER IS NOT SHARING THIS FILE>", 23, 0);
+                }
+                else{
+                    Groups[gid].shareableFiles[fileName].erase(it);
+                    cout<<"<"<<uid<<" STOPPED SHARING>: FILENAME: "<<fileName<<" IN "<<"GROUP: "<<gid<<"\n";
+                    send(newSocketFd, "<STOPPED SHARING>", 23, 0);
+
+                    if(trackerNo == 1){
+                        syncCommand(request);
+                    }
+                }
+            }
+
         }
 
-        else{
-            if(request == "quit"){
-                cout<<"SHUTTING DOWN.. ";
+        //t_stop_share <group_id> <file_name> <uid>
+        else if(command[0] == "t_stop_share"){
+            if(trackerNo == 2){
+                string gid = command[1];
+                string fileName = command[2];
+                string uid = command[3];
+                set<string>::iterator it = Groups[gid].shareableFiles[fileName].find(uid);
+                Groups[gid].shareableFiles[fileName].erase(it);
+                cout<<"<"<<uid<<" STOPPED SHARING>: FILENAME: "<<fileName<<" IN "<<"GROUP: "<<gid<<"\n";
+                send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }
-            else cout<<"INVALID COMMAND!! -> "<<request<<"\n";
         }
         
         close(newSocketFd);
@@ -753,69 +1053,12 @@ void server(int port, string ip){
 }
 
 
-/* client code */
-char* request(struct Client *client, string serverIp, int port, string req){
-
-        char* res = (char*)malloc(20000);
-
-        struct sockaddr_in serverAddress;
-        serverAddress.sin_family = client->domain;
-        serverAddress.sin_port = htons(port);
-        serverAddress.sin_addr.s_addr = htonl(client->interface);
-
-        inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
-        if(connect(client->socket, (struct sockaddr*)&serverAddress, sizeof(serverAddress)) == -1){
-            cout<<"!! ERROR - CANNOT CONNECT SOCKET TO HOST !!\n";
-            return res;
-        }
-
-        if(send(client->socket, req.c_str(), req.size(), 0) == -1){
-            cout<<"!! ERROR - SENDING FROM REQ BUFFER TO CLIENT SOCKET FAILED !!\n";
-            return res;
-        }
-
-        if(req == "quit"){
-            if(close(client->socket) == -1){
-                cout<<"!! ERROR - CLOSING SOCKET FILE DESCRIPTOR !!\n";
-            }
-            return res;
-        }
-
-        if(read(client->socket, res, 20000) == -1){
-            cout<<"!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
-            return res;
-        }
-
-        return res;
-}
-
-struct Client clientConstructor(int domain, int type, int protocol, int port, u_long interface){
-    struct Client client;
-    client.domain = domain;
-    client.port = port;
-    client.interface = interface;
-
-    client.socket = socket(domain, type, protocol);
-    client.request = request;
-    return client;
-}
-
-void client(string req, string ip, int port) {
-    struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, port, INADDR_ANY);
-    if(client.socket == -1){
-        cout<<"!! ERROR - SOCKET CREATION FAILED !!\n";
-        return;
-    }
-    client.request(&client, tracker.ip, tracker.port, req);
-    close(client.socket);
-}
-
 /* main function */
 int main(int n, char* argv[]){
     string trackerInfoDest = argv[1];
-    int trackerNo = atoi(argv[2]);
+    trackerNo = atoi(argv[2]);
     tracker = getTrackerDetails(trackerInfoDest, trackerNo);
-
+    tracker2 = getTrackerDetails(trackerInfoDest, 2);
     cout<<"[Tracker Client]:    TrackerId=> "<<tracker.id<<" | IP=> "<<tracker.ip<<" | PORT=> "<<tracker.port<<"\n";
 
     // Logger::Info("%d", 3);
