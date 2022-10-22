@@ -425,7 +425,6 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
 
     string status = "incomplete";
     int count = 0;
-    struct Client client = clientConstructor(AF_INET,  SOCK_STREAM, 0, peerPort, INADDR_ANY);
     while(status == "incomplete"){
         char* res3 = client3.request(&client3, peerIp, peerPort, downloadFileReq, currChunkSize, 1);
         string response3(res3);
@@ -450,7 +449,6 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
         memset(res3, 0, currChunkSize);
         
     }
-    close(client.socket);
     close(client3.socket);
 
     if(status != "completed") std::cout<<"<DOWNLOADED CHUNK NO: "<<chunkNo<<" INCOMPLETE>\n";
@@ -1016,6 +1014,7 @@ void client(string req, string ip, int port) {
                     char* res1 = client1.request(&client1, tracker.ip, tracker.port, req1, 20000, 0);
                     string response1(res1);
                     std::memset(res1, 0, 20000);
+                    close(client1.socket);
                 }
 
                 // usleep(1000000);
