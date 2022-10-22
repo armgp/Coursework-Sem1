@@ -676,7 +676,7 @@ void processClientRequest(struct ThreadParams params){
                     set<string> userIds = (Groups[groupId].shareableFiles)[fileName];
                     string res = "";
                     for(string uid : userIds){
-                        //uid-ip-port-
+                        //uid-ip-port
                         if(UsersMap[uid].live){
                             res+=uid;
                             res+="-";
@@ -687,7 +687,7 @@ void processClientRequest(struct ThreadParams params){
                         }
                     }
                     res.pop_back();
-                    send(newSocketFd, res.c_str(), res.size(), 0);
+                    send(newSocketFd, res.c_str(), strlen(res.c_str()), 0);
                     cout<<"<SEND>: META DATA SUCCESFULLY FORWARDED\n";
                 }
 

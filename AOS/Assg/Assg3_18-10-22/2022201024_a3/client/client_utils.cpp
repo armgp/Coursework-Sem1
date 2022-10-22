@@ -1,7 +1,6 @@
 #include "client_functions.h"
 
-char *request(struct Client *client, string serverIp, int port, string req, int resSize, int flag)
-{
+char *request(struct Client *client, string serverIp, int port, string req, int resSize, int flag){
 
     char *res = (char *)malloc(resSize);
 
@@ -610,15 +609,13 @@ void client(string req, string ip, int port)
         {
             std::cout << "**********[<USER NOT A MEMBER OF THE GROUP>]**********\n";
         }
-        else
-        {
+        else{
 
             std::cout << "**********[<USERS WITH FILE>: " << response << "]**********\n";
 
             vector<string> usersInfo = divideStringByChar(response, ' ');
             unordered_map<string, pair<string, int>> userDetails;
-            for (string userInfo : usersInfo)
-            {
+            for (string userInfo : usersInfo){
                 vector<string> tokens = divideStringByChar(userInfo, '-');
                 userDetails[tokens[0]] = make_pair(tokens[1], atoi(tokens[2].c_str()));
             }
@@ -631,16 +628,14 @@ void client(string req, string ip, int port)
             // threads to get all the bitmaps from seeders
             sem_t mutex;
             sem_init(&mutex, 0, 1);
-            for (auto us : userDetails)
-            {
+            for (auto us : userDetails){
                 string peerId = us.first;
                 string peerIp = us.second.first;
                 int peerPort = us.second.second;
                 bitMapThreads.push_back(thread(getUsersBitMapThread, peerIp, peerPort, fileName, peerId, ref(userToBitMap), ref(mutex)));
             }
 
-            for (thread &t : bitMapThreads)
-            {
+            for (thread &t : bitMapThreads){
                 t.join();
             }
             sem_destroy(&mutex);
@@ -651,8 +646,7 @@ void client(string req, string ip, int port)
             unordered_map<string, pair<string, int>> userToStringBitMapAndLchunkSize;
             string bitMap = "";
             int lastChunkVal = 0;
-            for (auto ub : userToBitMap)
-            {
+            for (auto ub : userToBitMap){
                 vector<string> vals = divideStringByChar(ub.second, ' ');
                 userToStringBitMapAndLchunkSize[ub.first] = make_pair(vals[0], atoi(vals[1].c_str()));
                 if (bitMap == "")
@@ -668,8 +662,7 @@ void client(string req, string ip, int port)
             int noOfBytes = noOfChunks * 40;
 
             struct Client clientsh = clientConstructor(AF_INET, SOCK_STREAM, 0, port, INADDR_ANY);
-            if (clientsh.socket == -1)
-            {
+            if (clientsh.socket == -1){
                 std::cout << "!! ERROR - SOCKET CREATION FAILED !!\n";
                 return;
             }
