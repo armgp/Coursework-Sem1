@@ -90,7 +90,7 @@ void server(int port){
 
         else
         {
-            printf("%s\n", req);
+            printf("INVALID COMMAND: %s\n", req);
         }
         close(newSocketFd);
     }

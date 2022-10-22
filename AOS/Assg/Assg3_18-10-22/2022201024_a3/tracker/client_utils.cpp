@@ -687,7 +687,7 @@ void processClientRequest(struct ThreadParams params){
                         }
                     }
                     res.pop_back();
-                    send(newSocketFd, res.c_str(), strlen(res.c_str()), 0);
+                    write(newSocketFd, res.c_str(), strlen(res.c_str()));
                     cout<<"<SEND>: META DATA SUCCESFULLY FORWARDED\n";
                 }
 

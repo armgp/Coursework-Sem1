@@ -10,22 +10,18 @@ char *request(struct Client *client, string serverIp, int port, string req, int 
     serverAddress.sin_addr.s_addr = htonl(INADDR_ANY);
 
     inet_pton(client->domain, serverIp.c_str(), &serverAddress.sin_addr);
-    if (connect(client->socket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1)
-    {
+    if (connect(client->socket, (struct sockaddr *)&serverAddress, sizeof(serverAddress)) == -1){
         std::cout << "!! ERROR - CANNOT CONNECT SOCKET TO HOST !!\n";
         return res;
     }
 
-    if (send(client->socket, req.c_str(), req.size(), 0) == -1)
-    {
+    if (send(client->socket, req.c_str(), req.size(), 0) == -1){
         std::cout << "!! ERROR - SENDING FROM REQ BUFFER TO CLIENT SOCKET FAILED !!\n";
         return res;
     }
 
-    if (flag == 0)
-    {
-        if (read(client->socket, res, resSize) == -1)
-        {
+    if (flag == 0){
+        if (read(client->socket, res, resSize) == -1){
             std::cout << "!! ERROR - READING FROM CLIENT SOCKET FILE DESCRIPTOR !!\n";
             return res;
         }
@@ -136,8 +132,7 @@ void downloadChunkFromPeer(string fileName, string peerIp, int peerPort, int chu
     fileToBitMap[fileName].first[chunkNo] = true;
 }
 
-void client(string req, string ip, int port)
-{
+void client(string req, string ip, int port){
 
     vector<string> command = divideStringByChar(req, ' ');
 
