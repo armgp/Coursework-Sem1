@@ -612,7 +612,8 @@ void client(string req, string ip, int port){
             unordered_map<string, pair<string, int>> userDetails;
             for (string userInfo : usersInfo){
                 vector<string> tokens = divideStringByChar(userInfo, '-');
-                userDetails[tokens[0]] = make_pair(tokens[1], atoi(tokens[2].c_str()));
+                int port = atoi(tokens[2].substr(0, 4).c_str());
+                userDetails[tokens[0]] = make_pair(tokens[1], port);
             }
 
             unordered_map<string, string> userToBitMap;

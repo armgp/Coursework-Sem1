@@ -779,6 +779,9 @@ void processClientRequest(struct ThreadParams params){
                 }
                 else{
                     Groups[gid].shareableFiles[fileName].erase(it);
+                    if(Groups[gid].shareableFiles[fileName].size() == 0){
+                        Groups[gid].shareableFiles.erase(Groups[gid].shareableFiles.find(fileName));
+                    }
                     cout<<"<"<<uid<<" STOPPED SHARING>: FILENAME: "<<fileName<<" IN "<<"GROUP: "<<gid<<"\n";
                     send(newSocketFd, "<STOPPED SHARING>", 23, 0);
 
@@ -798,6 +801,9 @@ void processClientRequest(struct ThreadParams params){
                 string uid = command[3];
                 set<string>::iterator it = Groups[gid].shareableFiles[fileName].find(uid);
                 Groups[gid].shareableFiles[fileName].erase(it);
+                if(Groups[gid].shareableFiles[fileName].size() == 0){
+                    Groups[gid].shareableFiles.erase(Groups[gid].shareableFiles.find(fileName));
+                }
                 cout<<"<"<<uid<<" STOPPED SHARING>: FILENAME: "<<fileName<<" IN "<<"GROUP: "<<gid<<"\n";
                 send(newSocketFd, "<TRACKER2 SYNCED>", 18, 0);
             }

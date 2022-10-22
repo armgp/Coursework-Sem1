@@ -8,4 +8,5 @@
     4. To run both trackers run the below commands on two different terminals
         4.1 ./tracker tracker_info.txt 1
         4.2 ./tracker tracker_info.txt 2
-    5. Use make clean to clear the .o files and the executable file
+    5. Use make clean to clear the .o files and the executable file.
+    6. Inside the folder client infile client_functions.h set #define DESTDIR = any value for the user folder to get created at
