@@ -608,6 +608,11 @@ void client(string req, string ip, int port){
 
             std::cout << "**********[<USERS WITH FILE>: " << response << "]**********\n";
 
+            if(response.size() == 0){
+                std::cout<<"**********[<NO USERS WITH THE FILE FOUND>]**********\n";
+                return;
+            }
+
             vector<string> usersInfo = divideStringByChar(response, ' ');
             unordered_map<string, pair<string, int>> userDetails;
             for (string userInfo : usersInfo){
