@@ -1,5 +1,6 @@
 import csv
 import os
+import time
 
 from prettytable import PrettyTable
 
@@ -31,6 +32,11 @@ def printOps():
 	print('3. REMOVE/UPDATE ENTRY')
 	print('4. SEARCH')
 	print('5. QUIT')
+	
+def printInvalid():
+	print('INVALID OPTION')
+	time.sleep(0.5)
+	
 
 while True:
 	printOps()
@@ -60,22 +66,29 @@ while True:
 		if opt==1:
 			row = input('ENTER SlNo OF ROW TO BE REMOVED: ')
 			index = int(row)
-			del directory[index]
-			print(directory)
+			if index in directory.keys():
+				del directory[index]
+				print(directory)
+			else:
+				printInvalid()
 		elif opt==2:
 			rowInd = int(input('ENTER SlNo OF ROW TO BE UPDATED: '))
-			
-			table = PrettyTable([1,2,3,4,5,6,7,8])
-			table.add_row(directory[rowInd])
-			print(table)
-			
-			colInd = int(input('ENTER COLUMN NO: OF VALUE TO BE UPDATED: '))
-			colInd-=1
-			value = input('ENTER NEW VALUE: ')
-			directory[rowInd][colInd] = value;
+			if rowInd in directory.keys():
+				table = PrettyTable([1,2,3,4,5,6,7,8])
+				table.add_row(directory[rowInd])
+				print(table)
+				colInd = int(input('ENTER COLUMN NO: OF VALUE TO BE UPDATED: '))
+				if colInd in [1,2,3,4,5,6,7,8]:
+					colInd-=1
+					value = input('ENTER NEW VALUE: ')
+					directory[rowInd][colInd] = value
+				else:
+					printInvalid()
+			else:
+				printInvalid()
 			
 		else:
-			print('INVALID OPTION')
+			printInvalid()
 		
 		printTable()
 	elif option==4:
@@ -93,7 +106,7 @@ while True:
 				print(foundTable)
 			else:
 				print('------ENTRY DOESN\'T EXIST------')
-		else:
+		elif key in [1,2,3,4,5,6,7,8]:
 			index = key-1
 			res = []
 			for i in directory.keys():
@@ -110,6 +123,8 @@ while True:
 				print(foundTable)
 			else:
 				print('------ENTRY DOESN\'T EXIST------')
+		else:
+			printInvalid()
 				
 	elif option==5:
 		os.system('clear')
@@ -123,4 +138,4 @@ while True:
 		f.close()
 		break
 	else:
-		print('INVALID OPTION\n')
+		printInvalid()
