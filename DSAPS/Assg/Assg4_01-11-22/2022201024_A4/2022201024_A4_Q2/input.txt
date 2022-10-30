@@ -1,23 +1,2 @@
-22
-1 hey c
-1 rachel d
-1 jane f
-1 jne g
-1 he e
-1 rahel g
-1 je 6
-1 jn f
-1 23 g
-1 s 4
-1 fg 6
-1 5643 6
-1 5t 7
-4  je
-2 je
-2 none
-3 fg
-3 s
-3 5t
-3 none
-4 je
-4 5t
+16 10
+45 20 41 30 32 18 98 72 82 76 10 28 68 57 98 54

@@ -72,7 +72,8 @@ public:
         float loadfactor = (float)currSize / (float)capacity;
         if (loadfactor > 0.7)
         {
-            capacity = getNextPrimeNumber(capacity);
+            // capacity = getNextPrimeNumber(capacity);
+            capacity = 2*capacity;
             currSize = 0;
             vector<HashNode<K, V> *> tempBucket = bucket;
             bucket.resize(capacity, NULL);
@@ -136,6 +137,7 @@ public:
                     if (!prevNode && !currNode->right)
                     {
                         bucket[bucketNumber] = NULL;
+                        currSize--;
                         return;
                     }
                     if (prevNode) {
@@ -146,6 +148,7 @@ public:
                         currNode->right->left = prevNode;
                         if(!prevNode) bucket[bucketNumber] = currNode->right;
                     }
+                    currSize--;
                     return;
                 }
                 prevNode = currNode;
