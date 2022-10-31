@@ -1,5 +1,6 @@
 #include <iostream>
 #include <vector>
+#include <limits.h>
 
 using namespace std;
 
@@ -87,17 +88,34 @@ int main(){
         adjList[v].push_back({w, u});
     }
     vector<int> policeStations(k, 0);
-    for(int i=0; i<k; i++) cin>>policeStations[i];
+    vector<int> minDist(n+1, INT_MAX);
+    for(int i=0; i<k; i++) {
+        cin>>policeStations[i];
+        minDist[policeStations[i]] = 0;
+    }
 
-    // MinHeap h;
-    // for(vector<vector<int>> vv : adjList){
-    //     for(vector<int> e : vv) h.insert(e[0], e[1]);
-    // }
+    MinHeap h;
+    for(int p : policeStations) h.insert(0, p);
 
-    // while(!h.isEmpty()){
-    //     vector<int> e = h.poll();
-    //     cout<<e[0]<<"-"<<e[1]<<"\n";
-    // }
+    while(!h.isEmpty()){
+        vector<int> e = h.poll();
+        int w = e[0];
+        int u = e[1];
+        int currDist = minDist[u];
+        for(vector<int> edge : adjList[u]){
+            int _w = edge[0];
+            int _u = edge[1];
+            int dist = currDist+_w;
+            if(minDist[_u]>dist) {
+                minDist[_u] = dist;
+                h.insert(dist, _u);
+            }
+        }
+    }
+
+    for(int i=1; i<=n; i++){
+        minDist[i]==INT_MAX? cout<<-1<<" " : cout<<minDist[i]<<" ";
+    }
 
     return 0;
 }
