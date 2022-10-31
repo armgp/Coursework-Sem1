@@ -4,16 +4,24 @@
 using namespace std;
 
 class UnionFind{
+public:
     vector<int> root;
     vector<int> rank;
-public:
+    vector<int> rootMembers;
+    int maxUnionSize;
+    int numberOfSets;
+
     UnionFind(int n){
         root.resize(n+1);
         rank.resize(n+1);
+        rootMembers.resize(n+1);
         for(int i=0; i<=n; i++){
             root[i] = i;
             rank[i] = 1;
+            rootMembers[i] = 1;
         }
+        maxUnionSize = 1;
+        numberOfSets = n;
     }
 
     int getRoot(int u){
@@ -21,7 +29,7 @@ public:
         return root[u] = getRoot(root[u]);
     }
 
-    int unionSet(int a, int b){
+    void unionSet(int a, int b){
         int rootA = getRoot(a);
         int rootB = getRoot(b);
         if(rootA!=rootB){
@@ -33,6 +41,10 @@ public:
                 root[rootA] = rootB;
                 rank[rootB] += 1;
             }
+            numberOfSets--;
+            int _root = getRoot(a);
+            rootMembers[_root]++;
+            if(rootMembers[_root]>maxUnionSize) maxUnionSize = rootMembers[_root];
         }
     }
 
@@ -49,6 +61,7 @@ int main(){
         int a, b;
         cin>>a>>b;
         uf.unionSet(a, b);
+        cout<<uf.numberOfSets<<" "<<uf.maxUnionSize<<"\n";
     }
     return 0;
 }
