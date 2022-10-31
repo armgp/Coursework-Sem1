@@ -219,10 +219,8 @@ int main(){
     for(int i=0; i<k; i++){
         if(map.find(arr[i]) == 1){
             map.insert(arr[i], map[arr[i]]+1);
-            cout<<map.currSize<<"=\n";
         }else{
             map.insert(arr[i], 1);
-            cout<<map.currSize<<"+\n";
         }
     }
 

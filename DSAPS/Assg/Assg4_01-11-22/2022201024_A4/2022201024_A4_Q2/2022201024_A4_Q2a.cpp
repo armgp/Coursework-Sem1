@@ -69,6 +69,34 @@ public:
 
     void insert(K key, V value)
     {
+        size_t hashVal = getHash(key);
+        int bucketNumber = getBucketNumber(hashVal);
+        if (bucket[bucketNumber] == NULL)
+        {
+            HashNode<K, V> *newNode = new HashNode<K, V>(key, value, hashVal);
+            bucket[bucketNumber] = newNode;
+            currSize++;
+        }
+        else
+        {
+            HashNode<K, V> *prevNode = NULL;
+            HashNode<K, V> *currNode = bucket[bucketNumber];
+            while (currNode != NULL)
+            {
+                if (currNode->key == key)
+                {
+                    currNode->value = value;
+                    return;
+                }
+                prevNode = currNode;
+                currNode = currNode->right;
+            }
+            HashNode<K, V> *newNode = new HashNode<K, V>(key, value, hashVal);
+            prevNode->right = newNode;
+            newNode->left = prevNode;
+            currSize++;
+        }
+
         float loadfactor = (float)currSize / (float)capacity;
         if (loadfactor > 0.7)
         {
@@ -76,7 +104,7 @@ public:
             capacity = 2*capacity;
             currSize = 0;
             vector<HashNode<K, V> *> tempBucket = bucket;
-            bucket.resize(capacity, NULL);
+            bucket.assign(capacity, NULL);
             for (HashNode<K, V> *node : tempBucket)
             {
                 HashNode<K, V> *currNode = node;
@@ -86,38 +114,8 @@ public:
                     currNode = currNode->right;
                 }
             }
-            insert(key, value);
         }
-        else
-        {
-            size_t hashVal = getHash(key);
-            int bucketNumber = getBucketNumber(hashVal);
-            if (bucket[bucketNumber] == NULL)
-            {
-                HashNode<K, V> *newNode = new HashNode<K, V>(key, value, hashVal);
-                bucket[bucketNumber] = newNode;
-                currSize++;
-            }
-            else
-            {
-                HashNode<K, V> *prevNode = NULL;
-                HashNode<K, V> *currNode = bucket[bucketNumber];
-                while (currNode != NULL)
-                {
-                    if (currNode->key == key)
-                    {
-                        currNode->value = value;
-                        return;
-                    }
-                    prevNode = currNode;
-                    currNode = currNode->right;
-                }
-                HashNode<K, V> *newNode = new HashNode<K, V>(key, value, hashVal);
-                prevNode->right = newNode;
-                newNode->left = prevNode;
-                currSize++;
-            }
-        }
+        
     }
 
     void erase(K key)
@@ -201,6 +199,7 @@ public:
         return V();
     }
 };
+
 
 int main()
 {
