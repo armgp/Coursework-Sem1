@@ -184,23 +184,27 @@ int main(){
 
     vector<int> suffixArray = getSuffixArray(str);
     vector<int> lcpArray = getLCPFast(suffixArray, str);
-    int maxLen = 0;
+    int maxLen = 0, index=0;
+    vector<string> results;
     for(int i=0; i<2*n; i++){
         if((suffixArray[i]<n && suffixArray[i+1]>n) || (suffixArray[i]>n && suffixArray[i+1]<n)){
             if(str[suffixArray[i]] == str[suffixArray[i]+lcpArray[i+1]-1])
-                maxLen = max(maxLen,lcpArray[i+1]);
+                if(lcpArray[i+1]>maxLen){
+                    maxLen = lcpArray[i+1];
+                    index = i;
+                    int ind = suffixArray[index];
+                    results.push_back(str.substr(ind, maxLen));
+                }
         }
     }
 
-    cout<<str<<"\n";
-
-    for(int i : suffixArray) cout<<str.substr(i)<<"  "<<i<<"\n";
-    cout<<"\n";
-
-    for(int i : lcpArray) cout<<i<<" ";
-    cout<<"\n";
-
-    cout<<maxLen;
+    sort(results.begin(), results.end());
+    for(string ans : results){
+        if(ans.size() == maxLen) {
+            cout<<ans;
+            return 0;
+        }
+    }
 
     return 0;
 }
