@@ -139,7 +139,7 @@ vector<int> getSuffixArray(string s){
 
 }
 
-vector<int> getLCP(vector<int> SA, string str){
+vector<int> getLCPFast(vector<int> SA, string str){
     int n = SA.size();
     vector<int> LCP(n);
     vector<int> rank(n);
@@ -151,12 +151,25 @@ vector<int> getLCP(vector<int> SA, string str){
     for(int i=0; i<n; i++){
         if(rank[i]>0){
             int k = SA[rank[i]-1];
-            while(str[i+h] == str[k+h]) h++;
+            while(i+h<n && k+h<n && str[i+h] == str[k+h]) h++;
             LCP[rank[i]] = h;
             if(h>0) h--;
         }
     }
 
+    return LCP;
+}
+
+vector<int> getLCPSlow(vector<int> SA, string str){
+    int n = SA.size();
+    vector<int> LCP(n, 0);
+    for(int i=1; i<n; i++){
+        int st=0;
+        string s1 = str.substr(SA[i]);
+        string s2 = str.substr(SA[i-1]);
+        while(s1[st]==s2[st]) st++;
+        LCP[i] = st;
+    }
     return LCP;
 }
 
@@ -172,7 +185,7 @@ int main(){
     }
 
     vector<int> suffixArray = getSuffixArray(s);
-    vector<int> lcpArray = getLCP(suffixArray, s);
+    vector<int> lcpArray = getLCPFast(suffixArray, s);
 
     k--;
     vector<int> res;
