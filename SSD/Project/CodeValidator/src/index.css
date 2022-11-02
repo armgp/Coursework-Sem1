@@ -1,0 +1,40 @@
+body {
+  background-color: black;
+}
+
+.codeselector{
+    width: 20%;
+    margin: 10%;
+    font-weight: bolder;
+}
+
+.codes{
+    max-height: 320px;
+    overflow-y: scroll;
+}
+
+.codes::-webkit-scrollbar {
+    display: none;
+}
+
+.userarea{
+    display: flex;
+}
+
+.editor{
+    border: solid lightslategray;
+}
+
+.validatebutton{
+    height: 100px;
+    width: 100px;
+    border-radius: 100px;
+    border: solid rgb(5, 77, 5);
+    margin-top: 35%;
+    margin-left: 3%;
+}
+
+.uploadbutton{
+    margin: 10px;
+    border: solid darkgray;
+}
