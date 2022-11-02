@@ -38,3 +38,14 @@ body {
     margin: 10px;
     border: solid darkgray;
 }
+
+.uploaddiv{
+    margin-top: 5px;
+    border: solid lightgray;
+    display: flex;
+    text-align: center;
+    font-weight: bolder;
+    color: lightgray;
+    flex-direction: column;
+    max-width: 300px;
+}

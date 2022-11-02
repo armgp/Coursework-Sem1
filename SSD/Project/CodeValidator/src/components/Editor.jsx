@@ -10,7 +10,7 @@ const Editor = () => {
         <CodeMirror
           className='editor'
           value="write your code here"
-          height="800px"
+          height="750px"
           width="800px"
           theme="dark"
         //   extensions={[javascript({ jsx: true })]}
