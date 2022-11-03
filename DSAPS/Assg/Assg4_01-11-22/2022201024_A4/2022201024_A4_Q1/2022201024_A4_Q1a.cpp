@@ -17,12 +17,10 @@ struct Suffix{
     }
 };
 
-bool compare(struct Suffix s1, struct Suffix s2){
-    if(s1.rank[0]<s2.rank[0]) return true;
-    else if(s1.rank[0]>s2.rank[0]) return false;
-    else if(s1.rank[1]<s2.rank[1]) return true;
-    else if(s1.rank[1]>s2.rank[1]) return false;
-    return true;
+bool compare(struct Suffix &s1, struct Suffix &s2)
+{
+    return (s1.rank[0] == s2.rank[0])? (s1.rank[1] < s2.rank[1] ?1: 0):
+               (s1.rank[0] < s2.rank[0] ?1: 0);
 }
 
 vector<int> getSuffixArray(string s){
@@ -31,8 +29,8 @@ vector<int> getSuffixArray(string s){
     vector<struct Suffix> suffixes;
 
     for(int i=0; i<n; i++){
-        int a = s[i]-'a';
-        int b = i+1<n ? s[i+1]-'a' : s[0]-'a';
+        int a = s[i];
+        int b = i+1<n ? s[i+1] : s[n-(i+1)];
         struct Suffix suf(i, a, b);
         suffixes.push_back(suf);
     }
@@ -57,7 +55,7 @@ vector<int> getSuffixArray(string s){
 
         for(int i=0; i<n; i++){
             int nextIndex = suffixes[i].index+j/2;
-            suffixes[i].rank[1] = nextIndex<n ? suffixes[indexes[nextIndex]].rank[0] : s[0]-'a';
+            suffixes[i].rank[1] = nextIndex<n ? suffixes[indexes[nextIndex]].rank[0] : suffixes[indexes[nextIndex-n]].rank[0];
         }
 
         sort(suffixes.begin(), suffixes.end(), compare);

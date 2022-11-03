@@ -84,12 +84,10 @@ struct Suffix{
     }
 };
 
-bool compare(struct Suffix s1, struct Suffix s2){
-    if(s1.rank[0]<s2.rank[0]) return true;
-    else if(s1.rank[0]>s2.rank[0]) return false;
-    else if(s1.rank[1]<s2.rank[1]) return true;
-    else if(s1.rank[1]>s2.rank[1]) return false;
-    return true;
+bool compare(struct Suffix &s1, struct Suffix &s2)
+{
+    return (s1.rank[0] == s2.rank[0])? (s1.rank[1] < s2.rank[1] ?1: 0):
+               (s1.rank[0] < s2.rank[0] ?1: 0);
 }
 
 vector<int> getSuffixArray(string s){
@@ -176,7 +174,7 @@ vector<int> getLCPSlow(vector<int> SA, string str){
 int main(){
     string s;
     int k;
-    cin>>s>>k;
+    cin>>k>>s;
     int n = s.size();
 
     if(k==1){

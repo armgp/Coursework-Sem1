@@ -35,15 +35,17 @@ public:
         if(rootA!=rootB){
             if(rank[rootA]<rank[rootB]){
                 root[rootA] = rootB;
+                rootMembers[rootB]+=rootMembers[rootA];
             }else if(rank[rootA]>rank[rootB]){
                 root[rootB] = rootA;
+                rootMembers[rootA]+=rootMembers[rootB];
             }else{
                 root[rootA] = rootB;
                 rank[rootB] += 1;
+                rootMembers[rootB]+=rootMembers[rootA];
             }
             numberOfSets--;
             int _root = getRoot(a);
-            rootMembers[_root]++;
             if(rootMembers[_root]>maxUnionSize) maxUnionSize = rootMembers[_root];
         }
     }
