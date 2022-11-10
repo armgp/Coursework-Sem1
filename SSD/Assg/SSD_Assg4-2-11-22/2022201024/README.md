@@ -50,4 +50,5 @@
 ### Q3 - map.py
 	1. Open Terminal an navigate to the folder containing file map.py
 	2. Run command 'python3 map.py'
-	3. command data is read from csv file named commands.csv
+	3. command data is read from csv file named commands.csv - Command can be given in mm or cm.
+	4. Here starting position S is taken as the origin = (0, 0)

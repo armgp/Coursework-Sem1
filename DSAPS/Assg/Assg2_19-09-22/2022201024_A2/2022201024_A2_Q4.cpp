@@ -279,8 +279,8 @@ template<typename T> ostream &operator<<(ostream &out, arrSpMatrix<T> &c){
     int k=0;
     for(int i=0; i<c.n; i++){
         for(int j=0; j<c.m; j++){
-            if(k<c.ind && c[k][0]==i && c[k][1]==j) out<<c[k++][2]<<"\t";
-            else out<<T()<<"\t";
+            if(k<c.ind && c[k][0]==i && c[k][1]==j) out<<c[k++][2]<<" ";
+            else out<<T()<<" ";
         }
         out<<"\n";
     }
@@ -315,9 +315,8 @@ template<typename T> void arrSpAddition(){
         }
     }
     arrSpMatrix<T> mt = mt1+mt2;
-    mt.printArray();
 
-    cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt<<"\n";
+    cout<<mt<<"\n";
 }
 
 template<typename T> void arrSpTranspose(){
@@ -364,9 +363,7 @@ template<typename T> void arrSpMultiplication(){
         }
     }
     arrSpMatrix<T> mt = mt1*mt2;
-    cout<<mt1<<"* \n"<<mt2<<"= \n"<<mt<<"\n";
-    cout<<"\n";
-    // mt.printArray();
+    cout<<mt<<"\n";
 }
 
 template<typename T> void switchArrSpOps(int tyOp){
@@ -660,10 +657,10 @@ template<typename T> ostream &operator<<(ostream &out, llSpMatrix<T> &c){
     for(int i=0; i<c.n; i++){
         for(int j=0; j<c.m; j++){
             if(k!=NULL && k->row==i && k->col==j) {
-                out<<k->val<<"\t";
+                out<<k->val<<" ";
                 k=k->next;
             }
-            else out<<T()<<"\t";
+            else out<<T()<<" ";
         }
         out<<"\n";
     }
@@ -702,7 +699,7 @@ template<typename T> void llSpAddition(){
         }
     }
     llSpMatrix<T> mt = mt1+mt2;
-    cout<<mt1<<"+ \n"<<mt2<<"= \n"<<mt<<"\n";
+    cout<<mt<<"\n";
 }
 
 template<typename T> T** arrMerge(T** a1, int n1, T** a2, int n2){
@@ -754,7 +751,7 @@ template<typename T> void llSpMultiplication(){
     }
     llSpMatrix<T> mt = mt1*mt2;
     
-    cout<<mt1<<"* \n"<<mt2<<"= \n"<<mt<<"\n";
+    cout<<mt<<"\n";
     cout<<"\n";
 }
 

@@ -1,0 +1,19 @@
+{
+    "status": "ok",
+    "totalResults": 4,
+    "ads": [
+        {
+            "urlToImage": "src/assets/bb.jpg"
+          },
+      {
+        "urlToImage": "src/assets/swiggy.jpg"
+      },
+      {
+        "urlToImage": "src/assets/hod.jpg"
+      },
+      {
+        "urlToImage": "src/assets/Old-Monk.jpg"
+      }
+    ]
+  }
+  
